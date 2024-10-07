@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK Snapmeal
 on:
   workflow_dispatch:
     inputs:
@@ -8,7 +8,7 @@ on:
         default: 'main'
 
 jobs:
-  download:
+  build_apk:
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH Key
