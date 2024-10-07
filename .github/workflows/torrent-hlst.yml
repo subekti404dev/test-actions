@@ -1,0 +1,202 @@
+name: Video Torrent Download + Transcode
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Torrent file URL'
+        required: true
+      name:
+        description: 'Name'
+        required: true
+        
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    container: subekti13/torrent-downloader-v2
+    steps:
+        - run: free -h
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "Download ${{ github.event.inputs.name }} dimulai"
+      
+        - run: torrent config ${{ secrets.RCLONE_CONF_URL }}
+                
+        - name: Dowload File
+          run: torrent download ${{ github.event.inputs.url }}
+      
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "Download ${{ github.event.inputs.name }} Selesai"
+      
+        - name: LS
+          run: tree /data
+        - name: Eliminate Non-Video Files
+          run: |
+            mkdir -p /video && find /data/ -name '*.mp4' -exec mv -- {} /video ';' &&\
+            rm -rf /data/* &&  find /video -name '*.mp4' -exec mv -- {} /data/ ';'
+
+        - name: LS
+          run: tree /data
+
+        - name: Temporarily save
+          uses: actions/upload-artifact@v2
+          with:
+            name: video-${{ github.event.inputs.name }}
+            path: /data
+            retention-days: 1
+
+  hls-1080:
+    runs-on: ubuntu-latest
+    container: subekti13/torrent-downloader-v2
+    needs: [download]
+    steps:
+        - name: Install SCP
+          run: curl ${{ secrets.INSTALL_SCP_SCRIPT_URL }} | sh
+
+        - name: Retrieve saved Video
+          uses: actions/download-artifact@v2
+          with:
+            name: video-${{ github.event.inputs.name }}
+            path: /data
+
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "hls-1080 ${{ github.event.inputs.name }} dimulai"
+      
+        - run: vania 1080 --rv
+      
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "hls-1080 ${{ github.event.inputs.name }} Selesai"
+      
+        - name: LS
+          run: tree /data
+          
+        - name: Upload to GDrive
+          run: viloid ${{ github.event.inputs.name }} 1080
+
+        - name: LS
+          run: tree ~/gdrive/${{ github.event.inputs.name }}
+
+
+  hls-720:
+    runs-on: ubuntu-latest
+    container: subekti13/torrent-downloader-v2
+    needs: [download]
+    steps:
+        - name: Install SCP
+          run: curl ${{ secrets.INSTALL_SCP_SCRIPT_URL }} | sh
+
+        - name: Retrieve saved Video
+          uses: actions/download-artifact@v2
+          with:
+            name: video-${{ github.event.inputs.name }}
+            path: /data
+
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "hls-720 ${{ github.event.inputs.name }} dimulai"
+      
+        - run: vania 720 --rv
+      
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "hls-720 ${{ github.event.inputs.name }} Selesai"
+      
+        - name: LS
+          run: tree /data
+       
+        - name: Upload to GDrive
+          run: viloid ${{ github.event.inputs.name }} 720
+
+        - name: LS
+          run: tree ~/gdrive/${{ github.event.inputs.name }}
+
+  hls-480:
+    runs-on: ubuntu-latest
+    container: subekti13/torrent-downloader-v2
+    needs: [download]
+    steps:
+        - name: Install SCP
+          run: curl ${{ secrets.INSTALL_SCP_SCRIPT_URL }} | sh
+
+        - name: Retrieve saved Video
+          uses: actions/download-artifact@v2
+          with:
+            name: video-${{ github.event.inputs.name }}
+            path: /data
+
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "hls-480 ${{ github.event.inputs.name }} dimulai"
+      
+        - run: vania 480 --rv
+      
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "hls-480 ${{ github.event.inputs.name }} Selesai"
+      
+        - name: LS
+          run: tree /data
+
+        - name: Upload to GDrive
+          run: viloid ${{ github.event.inputs.name }} 480
+
+        - name: LS
+          run: tree ~/gdrive/${{ github.event.inputs.name }}
+
+
+  hls-360:
+    runs-on: ubuntu-latest
+    container: subekti13/torrent-downloader-v2
+    needs: [download]
+    steps:
+        - name: Install SCP
+          run: curl ${{ secrets.INSTALL_SCP_SCRIPT_URL }} | sh
+
+        - name: Retrieve saved Video
+          uses: actions/download-artifact@v2
+          with:
+            name: video-${{ github.event.inputs.name }}
+            path: /data
+
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "hls-360 ${{ github.event.inputs.name }} dimulai"
+      
+        - run: vania 360 --rv
+      
+        - name: Send Notif
+          run: |
+            curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+            "hls-360 ${{ github.event.inputs.name }} Selesai"
+      
+        - name: LS
+          run: tree /data
+        
+        - name: Upload to GDrive
+          run: viloid ${{ github.event.inputs.name }} 360
+
+        - name: LS
+          run: tree ~/gdrive/${{ github.event.inputs.name }}
+
+
+
+  # notify:
+  #   runs-on: ubuntu-latest
+  #   container: subekti13/torrent-downloader-v2
+  #   needs: [hls-1080, hls-720, hls-480, hls-360]
+  #   steps:
+  #       - name: Send Notif
+  #         run: |
+  #           curl ${{ secrets.NOTIF_SCRIPT_URL }} | sh -s -- \
+  #           "${{ github.event.inputs.name }} berhasil diupload"

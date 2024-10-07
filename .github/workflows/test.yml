@@ -1,0 +1,28 @@
+
+name: Test
+on:
+  workflow_dispatch:
+        
+jobs:
+ 
+  test:
+    runs-on: ubuntu-latest
+    container: subekti13/torrent-downloader-v2
+    steps:
+        - name: Install SCP
+          run: |
+            curl ${{ secrets.INSTALL_SCP_SCRIPT_URL }} | sh
+
+        - run: |
+            mkdir -p /data/test/1080 /data/test/720 &&\
+            touch /data/test/1080/a.txt /data/test/720/b.txt
+
+        - name: LS
+          run: tree /data
+          
+        - name: Upload to GDrive
+          run: viloid test 1080
+
+        - name: LS
+          run: tree ~/gdrive/test
+

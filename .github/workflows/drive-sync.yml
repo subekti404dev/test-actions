@@ -1,0 +1,25 @@
+name: Drive Sync
+on:
+  schedule:
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+env:
+  SCRIPT_URL: https://gist.githubusercontent.com/subekti404dev/0d96cfbcce6298f246f2827321dc5d85/raw/b5c324c3be83732e05140a7561b912bc189d1b21/drive_sync_script.sh
+  SOURCE_DIR: "design-code"
+  TARGET_DIR: ""
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+        - run: wget -O rclone.conf ${{ secrets.RCLONE_CONF_URL }}
+        
+        - name: Download Script && Install
+          run: curl "$SCRIPT_URL" | bash
+          
+        - name: Mount Drive
+          run:  bash mount.sh
+          
+        - run: cd drive1 && ls -lah
+        - run: cd drive2 && ls -lah
+        
+        - run: rsync -auvr --progress drive1/"$SOURCE_DIR" drive2/"$TARGET_DIR"
