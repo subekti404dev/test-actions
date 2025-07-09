@@ -26,23 +26,23 @@ jobs:
       
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install Deps
-        run: cd duriooplus-mobile-v2/ && yarn
-
+      
       - name: Install Java 17
         uses: actions/setup-java@v1
         with:
           java-version: '17.x'
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: Ensure .expo directory exists
+        run: mkdir -p ~/.expo
+
+      - name: Write EXPO_TOKEN secret to ~/.expo/state.json
+        run: |
+          echo "${{ secrets.EXPO_TOKEN }}" > ~/.expo/state.json
+
+      - name: Install Deps
+        run: cd duriooplus-mobile-v2/ && yarn
 
       - name: Build aab
         run: cd duriooplus-mobile-v2/ && yarn build-prod-tv --local --output durioo.aab
