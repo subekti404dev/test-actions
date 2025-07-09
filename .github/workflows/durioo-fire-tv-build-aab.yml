@@ -53,8 +53,8 @@ jobs:
       - name: Check Dir
         run: ls -lah
 
-      # - name: Upload AAB
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: durioo-aab
-      #     path: 'duriooplus-mobile-v2/durioo.aab'
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: durioo-aab
+          path: 'duriooplus-mobile-v2/durioo.aab'
