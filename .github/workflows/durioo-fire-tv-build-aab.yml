@@ -45,7 +45,7 @@ jobs:
           cache: 'gradle'
 
       - name: Build aab
-        run: yarn build-prod-tv --local --output durioo.aab
+        run: cd duriooplus-mobile-v2/ && yarn build-prod-tv --local --output durioo.aab
 
       - name: Check Dir
         run: ls -lah
