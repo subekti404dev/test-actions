@@ -23,6 +23,7 @@ jobs:
         run: |
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - 
           sudo apt-get install -y nodejs
+          sudo npm install -g eas-cli
       
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
