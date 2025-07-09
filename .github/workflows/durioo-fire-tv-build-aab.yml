@@ -38,9 +38,11 @@ jobs:
       - name: Ensure .expo directory exists
         run: mkdir -p ~/.expo
 
-      - name: Write EXPO_TOKEN secret to ~/.expo/state.json
+      - name: Write EXPO_TOKEN (base64 decoded) to ~/.expo/state.json
         run: |
-          echo "${{ secrets.EXPO_TOKEN }}" > ~/.expo/state.json
+          mkdir -p ~/.expo
+          echo "${{ secrets.EXPO_TOKEN }}" | base64 -d > ~/.expo/state.json
+
 
       - name: Install Deps
         run: cd duriooplus-mobile-v2/ && yarn
