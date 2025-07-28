@@ -1,0 +1,70 @@
+name: Build APK Durioo Fire TV
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to clone'
+        required: false
+        default: 'chore/fire-tv-2'
+
+jobs:
+  build_aab:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Clone Repo
+        run: git clone -b ${{ github.event.inputs.branch }} ${{ secrets.DURIOO_REPO }}
+
+      - name: Install Utilities
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - 
+          sudo apt-get install -y nodejs
+          sudo npm install -g eas-cli
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: Install Java 17
+        uses: actions/setup-java@v1
+        with:
+          java-version: '17.x'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Ensure .expo directory exists
+        run: mkdir -p ~/.expo
+
+      - name: Write EXPO_TOKEN (base64 decoded) to ~/.expo/state.json
+        run: |
+          mkdir -p ~/.expo
+          echo "${{ secrets.EXPO_TOKEN }}" | base64 -d > ~/.expo/state.json
+
+
+      - name: Install Deps
+        run: cd duriooplus-mobile-v2/ && yarn
+
+      - name: Update eas.json
+        uses: jossef/action-set-json-field@v2.1
+        with:
+          file: duriooplus-mobile-v2/eas.json
+          field: build.production-tv.android
+          value: '{"buildType": "apk"}'
+          parse_json: true
+
+      - run: cat duriooplus-mobile-v2/eas.json
+      
+      - name: Build apk
+        run: cd duriooplus-mobile-v2/ && yarn build-prod-tv --local --output durioo.apk
+
+      - name: Check Dir
+        run: ls -lah
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: durioo-apk
+          path: 'duriooplus-mobile-v2/durioo.apk'
