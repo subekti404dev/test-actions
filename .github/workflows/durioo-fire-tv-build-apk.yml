@@ -8,7 +8,7 @@ on:
         default: 'chore/fire-tv-2'
 
 jobs:
-  build_aab:
+  build_apk:
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH Key
