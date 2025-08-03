@@ -114,12 +114,11 @@ jobs:
             echo "Missing required env(s). UPLOAD_URL='${UPLOAD_URL:-}', CONTENT_TYPE='${UPLOAD_CONTENT_TYPE:-}', VIDEO_FILE='${VIDEO_FILE:-}'"
             exit 1
           fi
-          echo "Uploading '$VIDEO_FILE' to presigned URL (streaming with chunked transfer)"
-          # Stream file without buffering it into memory; avoid --data-binary to prevent OOM in this curl build
-          # - T uploads file via streaming from disk
-          # - --no-buffer ensures immediate sending
-          # - --header sets the required content type
-          curl -sS --fail --location -X PUT "${UPLOAD_URL}" \
+
+          # Workaround for curl interpreting [] in URLs as ranges: use --globoff to disable URL globbing.
+          # Also quote the URL and path; spaces in VIDEO_FILE are supported by --upload-file.
+          echo "Uploading '$VIDEO_FILE' to presigned URL (streaming upload)"
+          curl -sS --fail --location --globoff -X PUT "${UPLOAD_URL}" \
             --header "Content-Type: ${UPLOAD_CONTENT_TYPE}" \
             --no-buffer \
             --upload-file "${VIDEO_FILE}"
