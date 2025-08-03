@@ -114,11 +114,15 @@ jobs:
             echo "Missing required env(s). UPLOAD_URL='${UPLOAD_URL:-}', CONTENT_TYPE='${UPLOAD_CONTENT_TYPE:-}', VIDEO_FILE='${VIDEO_FILE:-}'"
             exit 1
           fi
-          echo "Uploading '$VIDEO_FILE' to presigned URL"
-          # Use --data-binary @file to avoid altering bytes
-          curl -sS --fail --location --request PUT "${UPLOAD_URL}" \
+          echo "Uploading '$VIDEO_FILE' to presigned URL (streaming with chunked transfer)"
+          # Stream file without buffering it into memory; avoid --data-binary to prevent OOM in this curl build
+          # - T uploads file via streaming from disk
+          # - --no-buffer ensures immediate sending
+          # - --header sets the required content type
+          curl -sS --fail --location -X PUT "${UPLOAD_URL}" \
             --header "Content-Type: ${UPLOAD_CONTENT_TYPE}" \
-            --data-binary @"${VIDEO_FILE}"
+            --no-buffer \
+            --upload-file "${VIDEO_FILE}"
           echo "Upload completed"
 
       - name: Callback notify upload result
