@@ -7,26 +7,132 @@ on:
         required: true
       compress:
         description: 'Compress File After Download'
-        
 jobs:
   download:
     runs-on: ubuntu-latest
     container: subekti13/torrent-downloader-v2
     steps:
- 
-        - run: torrent config ${{ secrets.RCLONE_CONF_URL }}
-                
-        - name: Dowload File
-          run: torrent download ${{ github.event.inputs.url }}
-      
-        - name: LS
-          run: tree /data
-        
-        - name: Compress
-          if: github.event.inputs.compress == '1'
-          run: compress
-          
-        - name: Upload to Drive
-          run: torrent upload 1-u94ApPELl5b3Hpu3SRWReL3KuBzjV7X
+      - run: torrent config ${{ secrets.RCLONE_CONF_URL }}
 
-        
+      - name: Dowload File
+        run: torrent download ${{ github.event.inputs.url }}
+
+      - name: LS
+        run: tree /data
+
+      - name: Find video file path
+        id: find_video
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Maintain extensions in a single array for easy future edits
+          exts=(mp4 mkv avi mov mpeg mpg m4v webm flv wmv ts m2ts 3gp)
+
+          # Build find predicates from the array
+          find_args=()
+          for ext in "${exts[@]}"; do
+            # Add -o between patterns except before the first one
+            if [ "${#find_args[@]}" -gt 0 ]; then
+              find_args+=(-o)
+            fi
+            find_args+=(-iname "*.${ext}")
+          done
+
+          # Run find with dynamically built predicates, NUL-delimited for safety
+          files="$(find /data -type f \( ${find_args[@]} \) -print0 2>/dev/null)"
+
+          if [ -z "$files" ]; then
+            echo "No video files found under /data"
+            exit 1
+          fi
+
+          # Select the largest candidate to avoid small samples
+          VIDEO_FILE="$(printf '%s' "$files" | xargs -0 -I{} bash -c 'stat -c "%s %n" "$1"' _ {} | sort -nr | head -n1 | cut -d" " -f2-)"
+          echo "Selected VIDEO_FILE: $VIDEO_FILE"
+          echo "VIDEO_FILE=$VIDEO_FILE" >> "$GITHUB_ENV"
+
+      # - name: Compress
+      #   if: github.event.inputs.compress == '1'
+      #   run: compress
+
+      - name: Register file via API
+        id: register_file
+        shell: bash
+        env:
+          API_URL: https://api.luxsioab.com/pub/api/local/upload
+          API_KEY: ${{ secrets.LIXSTREAM_API_KEY }}
+          VIDEO_FILE: ${{ env.VIDEO_FILE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VIDEO_FILE:-}" ]; then
+            echo "VIDEO_FILE is not set"
+            exit 1
+          fi
+          FILE_NAME="$(basename "$VIDEO_FILE")"
+          echo "Registering file: $FILE_NAME to $API_URL"
+          RESP="$(curl -sS -X POST -H 'Content-Type: application/json' \
+            "$API_URL" \
+            --data "{\"key\":\"${API_KEY}\",\"name\":\"${FILE_NAME}\"}")"
+          echo "API response: $RESP"
+
+          # Parse expected response fields using jq
+          CODE="$(printf '%s' "$RESP" | jq -r '.code // empty' 2>/dev/null || true)"
+          UPLOAD_URL="$(printf '%s' "$RESP" | jq -r '.data.url // empty' 2>/dev/null || true)"
+          UPLOAD_CT="$(printf '%s' "$RESP" | jq -r '.data.header["Content-Type"] // empty' 2>/dev/null || true)"
+          UPLOAD_ID="$(printf '%s' "$RESP" | jq -r '.data.id // empty' 2>/dev/null || true)"
+
+          if [ "${CODE:-}" != "200" ] || [ -z "${UPLOAD_URL:-}" ]; then
+            echo "Warning: unexpected API response format or code (code=${CODE:-null}, url=${UPLOAD_URL:-empty})"
+          fi
+
+          # Persist raw response and parsed fields for later steps
+          echo "API_RESPONSE<<EOF" >> "$GITHUB_ENV"
+          echo "$RESP" >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
+          echo "UPLOAD_URL=$UPLOAD_URL" >> "$GITHUB_ENV"
+          echo "UPLOAD_CONTENT_TYPE=$UPLOAD_CT" >> "$GITHUB_ENV"
+          echo "UPLOAD_ID=$UPLOAD_ID" >> "$GITHUB_ENV"
+
+          echo "Parsed -> URL: ${UPLOAD_URL:-}, Content-Type: ${UPLOAD_CT:-}, ID: ${UPLOAD_ID:-}"
+
+      # - name: Upload to Drive
+      #   run: torrent upload 1-u94ApPELl5b3Hpu3SRWReL3KuBzjV7X
+
+      - name: Upload file to signed URL
+        id: upload_signed_url
+        shell: bash
+        env:
+          UPLOAD_URL: ${{ env.UPLOAD_URL }}
+          UPLOAD_CONTENT_TYPE: ${{ env.UPLOAD_CONTENT_TYPE }}
+          VIDEO_FILE: ${{ env.VIDEO_FILE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${UPLOAD_URL:-}" ] || [ -z "${UPLOAD_CONTENT_TYPE:-}" ] || [ -z "${VIDEO_FILE:-}" ]; then
+            echo "Missing required env(s). UPLOAD_URL='${UPLOAD_URL:-}', CONTENT_TYPE='${UPLOAD_CONTENT_TYPE:-}', VIDEO_FILE='${VIDEO_FILE:-}'"
+            exit 1
+          fi
+          echo "Uploading '$VIDEO_FILE' to presigned URL"
+          # Use --data-binary @file to avoid altering bytes
+          curl -sS --fail --location --request PUT "${UPLOAD_URL}" \
+            --header "Content-Type: ${UPLOAD_CONTENT_TYPE}" \
+            --data-binary @"${VIDEO_FILE}"
+          echo "Upload completed"
+
+      - name: Callback notify upload result
+        id: upload_callback
+        shell: bash
+        env:
+          API_URL_CALLBACK: https://api.luxsioab.com/pub/api/local/upload/callback
+          API_KEY: ${{ secrets.LIXSTREAM_API_KEY }}
+          UPLOAD_ID: ${{ env.UPLOAD_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${UPLOAD_ID:-}" ]; then
+            echo "UPLOAD_ID is not set"
+            exit 1
+          fi
+          echo "Sending upload callback for ID: ${UPLOAD_ID}"
+          RESP="$(curl -sS -X POST -H 'Content-Type: application/json' \
+            "${API_URL_CALLBACK}" \
+            --data "{\"key\":\"${API_KEY}\",\"result\":true,\"id\":\"${UPLOAD_ID}\"}")"
+          echo "Callback response: $RESP"
