@@ -195,8 +195,13 @@ jobs:
             --data "{\"key\":\"${API_KEY}\",\"result\":true,\"id\":\"${UPLOAD_ID}\"}")"
           echo "Callback response: $RESP"
 
+          # Persist callback response for later steps
+          printf '%s\n' "CALLBACK_RESPONSE<<EOF" >> "$GITHUB_ENV"
+          printf '%s\n' "$RESP" >> "$GITHUB_ENV"
+          printf '%s\n' "EOF" >> "$GITHUB_ENV"
+
       - name: Send Telegram notification
-        if: ${{ env.CALLBACK_RESPONSE != '' }}
+        if: ${{ always() && steps.upload_callback.outcome == 'success' }}
         id: notify_telegram
         shell: sh
         env:
@@ -205,6 +210,11 @@ jobs:
           CALLBACK_RESPONSE: ${{ env.CALLBACK_RESPONSE }}
         run: |
           set -eu
+          if [ -z "${CALLBACK_RESPONSE:-}" ]; then
+            echo "CALLBACK_RESPONSE not set; skipping notification"
+            exit 0
+          fi
+
           if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
             echo "Telegram credentials are not set; skipping notification"
             exit 0
