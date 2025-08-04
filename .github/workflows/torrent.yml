@@ -179,3 +179,41 @@ jobs:
             "${API_URL_CALLBACK}" \
             --data "{\"key\":\"${API_KEY}\",\"result\":true,\"id\":\"${UPLOAD_ID}\"}")"
           echo "Callback response: $RESP"
+
+      - name: Send Telegram notification
+        if: ${{ env.CALLBACK_RESPONSE != '' }}
+        id: notify_telegram
+        shell: sh
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID_TORRENT_REPORT }}
+          CALLBACK_RESPONSE: ${{ env.CALLBACK_RESPONSE }}
+        run: |
+          set -eu
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "Telegram credentials are not set; skipping notification"
+            exit 0
+          fi
+
+          FILE_SHARE_LINK="$(printf '%s' "$CALLBACK_RESPONSE" | jq -r '.data.file_share_link // empty' 2>/dev/null || true)"
+          FILE_NAME="$(printf '%s' "$CALLBACK_RESPONSE" | jq -r '.data.file_name // empty' 2>/dev/null || true)"
+
+          if [ -z "${FILE_SHARE_LINK:-}" ]; then
+            echo "file_share_link not found in callback response; skipping notification"
+            exit 0
+          fi
+
+          TEXT="Upload success: ${FILE_NAME:-video} -> ${FILE_SHARE_LINK}"
+          API_URL="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+
+          curl -sS --fail -X POST "$API_URL" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode text="$TEXT" \
+            -d parse_mode="HTML"
+
+          echo "Telegram notification sent"
+
+          # Persist callback response for later steps
+          printf '%s\n' "CALLBACK_RESPONSE<<EOF" >> "$GITHUB_ENV"
+          printf '%s\n' "$RESP" >> "$GITHUB_ENV"
+          printf '%s\n' "EOF" >> "$GITHUB_ENV"
