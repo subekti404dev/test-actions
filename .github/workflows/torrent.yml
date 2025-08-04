@@ -247,7 +247,7 @@ jobs:
           curl --location "$API_URL" \
             --header 'Content-Type: application/json' \
             --data '{
-                "chat_id": "$TELEGRAM_CHAT_ID",
+                "chat_id": $TELEGRAM_CHAT_ID,
                 "text": "$TEXT",
                 "parse_mode": "Markdown"
             }'
