@@ -244,9 +244,13 @@ jobs:
           TEXT="Upload success:\n ${FILE_NAME:-video} -> ${FILE_SHARE_LINK}"
           API_URL="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
 
-          curl -sS --fail -X POST "$API_URL" \
-            -d chat_id="${TELEGRAM_CHAT_ID}" \
-            --data-urlencode text="$TEXT" \
-            -d parse_mode="Markdown"
+          curl --location "$API_URL" \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "chat_id": "$TELEGRAM_CHAT_ID",
+                "text": "$TEXT",
+                "parse_mode": "Markdown"
+            }'
+         
 
           echo "Telegram notification sent"
