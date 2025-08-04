@@ -68,21 +68,29 @@ jobs:
             echo "VIDEO_FILE is not set"
             exit 1
           fi
+          echo "VIDEO_FILE is setted"
+
 
           INPUT_NAME="${{ github.event.inputs.filename }}"
           if [ -z "${INPUT_NAME:-}" ]; then
             echo "No filename provided, skipping rename"
             exit 0
           fi
+          echo "Filename provided"
 
           dir="$(dirname "$VIDEO_FILE")"
           base_input="$(basename "$INPUT_NAME")"
+          echo "Rename context -> dir='$dir', base_input='$base_input'"
+          
+
 
           # Normalize extension handling:
           # - Treat names ending with a dot as "no extension" (e.g., "movie.")
           # - If no extension present, reuse the original file's extension (case preserved)
           # - If extension present, use as-is
           orig_ext="${VIDEO_FILE##*.}"
+          echo "Rename context -> orig_ext='$orig_ext'"
+
           # Detect presence of a non-empty extension in base_input
           case "$base_input" in
             *.*)
@@ -98,8 +106,13 @@ jobs:
               new_name="$base_input.${orig_ext}"
               ;;
           esac
+          echo "Rename context -> new_name='$new_name'"
+
+          
 
           NEW_PATH="$dir/$new_name"
+          echo "Rename context -> NEW_PATH='$NEW_PATH'"
+
           echo "Renaming file to: $NEW_PATH"
           mv -f -- "$VIDEO_FILE" "$NEW_PATH"
 
