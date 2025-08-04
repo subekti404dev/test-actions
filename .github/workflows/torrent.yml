@@ -78,10 +78,25 @@ jobs:
           dir="$(dirname "$VIDEO_FILE")"
           base_input="$(basename "$INPUT_NAME")"
 
-          # If input has no extension, reuse the original extension
+          # Normalize extension handling:
+          # - Treat names ending with a dot as "no extension" (e.g., "movie.")
+          # - If no extension present, reuse the original file's extension (case preserved)
+          # - If extension present, use as-is
+          orig_ext="${VIDEO_FILE##*.}"
+          # Detect presence of a non-empty extension in base_input
           case "$base_input" in
-            *.*) new_name="$base_input" ;;
-            *)   orig_ext="${VIDEO_FILE##*.}"; new_name="$base_input.$orig_ext" ;;
+            *.*)
+              # Has a dot; check if the dot is at the end (empty ext)
+              if [ "${base_input##*.}" = "$base_input" ] || [ -z "${base_input##*.}" ]; then
+                # No real extension after dot -> append original extension
+                new_name="${base_input%.*}.${orig_ext}"
+              else
+                new_name="$base_input"
+              fi
+              ;;
+            *)
+              new_name="$base_input.${orig_ext}"
+              ;;
           esac
 
           NEW_PATH="$dir/$new_name"
