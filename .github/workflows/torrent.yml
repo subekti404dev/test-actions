@@ -53,26 +53,43 @@ jobs:
           VIDEO_FILE="$(printf '%s' "$files" | xargs -0 -I{} sh -c 'stat -c "%s %n" "$1"' _ {} | sort -nr | head -n1 | cut -d" " -f2-)"
           echo "Selected VIDEO_FILE: $VIDEO_FILE"
 
-          # If a filename input is provided, rename the file before upload
-          INPUT_NAME="${{ github.event.inputs.filename }}"
-          if [ -n "${INPUT_NAME:-}" ]; then
-            dir="$(dirname "$VIDEO_FILE")"
-            base_input="$(basename "$INPUT_NAME")"
+          # Persist discovered path to env for subsequent steps
+          echo "VIDEO_FILE=$VIDEO_FILE" >> "$GITHUB_ENV"
 
-            # If input has no extension, reuse the original extension
-            case "$base_input" in
-              *.*) new_name="$base_input" ;;
-              *)   orig_ext="${VIDEO_FILE##*.}"; new_name="$base_input.$orig_ext" ;;
-            esac
-
-            NEW_PATH="$dir/$new_name"
-            echo "Renaming file to: $NEW_PATH"
-            mv -f -- "$VIDEO_FILE" "$NEW_PATH"
-            VIDEO_FILE="$NEW_PATH"
+      - name: Rename video file (optional)
+        if: ${{ github.event.inputs.filename && github.event.inputs.filename != '' }}
+        id: rename_video
+        shell: sh
+        env:
+          VIDEO_FILE: ${{ env.VIDEO_FILE }}
+        run: |
+          set -eu
+          if [ -z "${VIDEO_FILE:-}" ]; then
+            echo "VIDEO_FILE is not set"
+            exit 1
           fi
 
-          # Persist possibly-updated path to env for subsequent steps
-          echo "VIDEO_FILE=$VIDEO_FILE" >> "$GITHUB_ENV"
+          INPUT_NAME="${{ github.event.inputs.filename }}"
+          if [ -z "${INPUT_NAME:-}" ]; then
+            echo "No filename provided, skipping rename"
+            exit 0
+          fi
+
+          dir="$(dirname "$VIDEO_FILE")"
+          base_input="$(basename "$INPUT_NAME")"
+
+          # If input has no extension, reuse the original extension
+          case "$base_input" in
+            *.*) new_name="$base_input" ;;
+            *)   orig_ext="${VIDEO_FILE##*.}"; new_name="$base_input.$orig_ext" ;;
+          esac
+
+          NEW_PATH="$dir/$new_name"
+          echo "Renaming file to: $NEW_PATH"
+          mv -f -- "$VIDEO_FILE" "$NEW_PATH"
+
+          # Update env for subsequent steps
+          echo "VIDEO_FILE=$NEW_PATH" >> "$GITHUB_ENV"
 
       # - name: Compress
       #   if: github.event.inputs.compress == '1'
