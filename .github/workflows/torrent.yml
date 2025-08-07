@@ -12,6 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     container: subekti13/torrent-downloader-v2
     steps:
+      - name: Load Remote ENV from Protected JSON
+        uses: subekti404dev/gha-json-env@v1
+        with:
+          url: ${{ secrets.ENV_URL }}
+          token: ${{ secrets.ENV_TOKEN }}
+
 
       - name: Dowload File
         run: torrent download ${{ github.event.inputs.url }}
@@ -123,7 +129,7 @@ jobs:
         shell: sh
         env:
           API_URL: https://api.luxsioab.com/pub/api/local/upload
-          API_KEY: ${{ secrets.LIXSTREAM_API_KEY }}
+          API_KEY: ${{ env.torent_downloader_lixstream_api_key }}
           VIDEO_FILE: ${{ env.VIDEO_FILE }}
         run: |
           set -eu
@@ -186,7 +192,7 @@ jobs:
         shell: sh
         env:
           API_URL_CALLBACK: https://api.luxsioab.com/pub/api/local/upload/callback
-          API_KEY: ${{ secrets.LIXSTREAM_API_KEY }}
+          API_KEY: ${{ env.torent_downloader_lixstream_api_key }}
           UPLOAD_ID: ${{ env.UPLOAD_ID }}
         run: |
           set -eu
@@ -216,8 +222,8 @@ jobs:
         id: notify_telegram
         shell: sh
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID_TORRENT_REPORT }}
+          TELEGRAM_BOT_TOKEN: ${{ env.torent_downloader_telegram_bot_token }}
+          TELEGRAM_CHAT_ID: ${{ env.torent_downloader_telegram_chat_id }}
           FILE_SHARE_LINK: ${{ env.FILE_SHARE_LINK }}
           FILE_NAME: ${{ env.FILE_NAME }}
         run: |
