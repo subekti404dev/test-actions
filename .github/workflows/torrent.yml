@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     container: subekti13/torrent-downloader-v2
     steps:
-      - run: torrent config ${{ secrets.RCLONE_CONF_URL }}
 
       - name: Dowload File
         run: torrent download ${{ github.event.inputs.url }}
@@ -119,10 +118,6 @@ jobs:
           # Update env for subsequent steps
           echo "VIDEO_FILE=$NEW_PATH" >> "$GITHUB_ENV"
 
-      # - name: Compress
-      #   if: github.event.inputs.compress == '1'
-      #   run: compress
-
       - name: Register file via API
         id: register_file
         shell: sh
@@ -162,9 +157,6 @@ jobs:
           echo "UPLOAD_ID=$UPLOAD_ID" >> "$GITHUB_ENV"
 
           echo "Parsed -> URL: ${UPLOAD_URL:-}, Content-Type: ${UPLOAD_CT:-}, ID: ${UPLOAD_ID:-}"
-
-      # - name: Upload to Drive
-      #   run: torrent upload 1-u94ApPELl5b3Hpu3SRWReL3KuBzjV7X
 
       - name: Upload file to signed URL
         id: upload_signed_url
@@ -244,13 +236,6 @@ jobs:
           TEXT="Upload success:\n ${FILE_NAME:-video} -> ${FILE_SHARE_LINK}"
           API_URL="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
 
-          # curl --location "$API_URL" \
-          #   --header 'Content-Type: application/json' \
-          #   --data '{
-          #       "chat_id": $TELEGRAM_CHAT_ID,
-          #       "text": "$TEXT",
-          #       "parse_mode": "Markdown"
-          #   }'
 
           echo "\n"
           echo "$TEXT"
