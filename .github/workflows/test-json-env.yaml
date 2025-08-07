@@ -27,3 +27,7 @@ jobs:
               echo "✅ $VAR is present"
             fi
           done
+
+      - run: |
+          echo "$database_host"
+      
