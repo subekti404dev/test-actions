@@ -1,0 +1,29 @@
+name: Fetch ENV Example
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch-env-demo:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 🧪 Step 1: Call your custom Action to fetch & set env vars
+      - name: Load Remote ENV from Protected JSON
+        uses: subekti404dev/gha-json-env@v1
+        with:
+          style: snake  # or camel / dot
+          url: ${{ secrets.ENV_URL }}
+          token: ${{ secrets.ENV_TOKEN }}
+
+      - name: Ensure required env vars exist
+        run: |
+          REQUIRED_VARS=("NODE_ENV" "database_host" "database_password")
+          for VAR in "${REQUIRED_VARS[@]}"; do
+            if [ -z "${!VAR:-}" ]; then
+              echo "❌ $VAR is missing!"
+              exit 1
+            else
+              echo "✅ $VAR is present"
+            fi
+          done
