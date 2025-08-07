@@ -18,10 +18,8 @@ jobs:
           token: ${{ secrets.ENV_TOKEN }}
           
       - name: Decode b64 ssh key
-        env:
-          B64_SSH_KEY: ${{ env.durioo_builder_b64_ssh_key }}
         run: |
-          SSH_PRIVATE_KEY=$(echo "$B64_SSH_KEY" | base64 -d)
+          SSH_PRIVATE_KEY=$(echo "$durioo_builder_b64_ssh_key" | base64 -d)
           echo "SSH_PRIVATE_KEY=$SSH_PRIVATE_KEY" >> "$GITHUB_ENV"
           
       - name: Setup SSH Key
@@ -30,9 +28,7 @@ jobs:
           ssh-private-key: ${{ env.SSH_PRIVATE_KEY }}
 
       - name: Clone Repo
-        env:
-          DURIOO_REPO: ${{ env.durioo_builder_repo_mobile }}
-        run: git clone -b ${{ github.event.inputs.branch }} ${{ DURIOO_REPO }}
+        run: git clone -b ${{ github.event.inputs.branch }} ${{ durioo_builder_repo_mobile }}
 
       - name: Install Utilities
         run: |
@@ -54,11 +50,9 @@ jobs:
         run: mkdir -p ~/.expo
 
       - name: Write EXPO_TOKEN (base64 decoded) to ~/.expo/state.json
-        env:
-          EXPO_TOKEN: ${{ env.durioo_builder_expo_token }}
         run: |
           mkdir -p ~/.expo
-          echo "${{ EXPO_TOKEN }}" | base64 -d > ~/.expo/state.json
+          echo "${{ durioo_builder_expo_token }}" | base64 -d > ~/.expo/state.json
 
 
       - name: Install Deps
