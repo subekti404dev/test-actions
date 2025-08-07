@@ -12,21 +12,9 @@ jobs:
       - name: Load Remote ENV from Protected JSON
         uses: subekti404dev/gha-json-env@v1
         with:
-          style: snake  # or camel / dot
+          style: camel
           url: ${{ secrets.ENV_URL }}
           token: ${{ secrets.ENV_TOKEN }}
-
-      # - name: Ensure required env vars exist
-      #   run: |
-      #     REQUIRED_VARS=("NODE_ENV" "database_host" "database_password")
-      #     for VAR in "${REQUIRED_VARS[@]}"; do
-      #       if [ -z "${!VAR:-}" ]; then
-      #         echo "❌ $VAR is missing!"
-      #         exit 1
-      #       else
-      #         echo "✅ $VAR is present"
-      #       fi
-      #     done
 
       - run: |
           echo "$database_host"
