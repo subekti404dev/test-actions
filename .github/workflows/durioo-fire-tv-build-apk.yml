@@ -17,15 +17,10 @@ jobs:
           url: ${{ secrets.ENV_URL }}
           token: ${{ secrets.ENV_TOKEN }}
           
-      - name: Decode b64 ssh key
-        run: |
-          SSH_PRIVATE_KEY=$(echo "${{ env.durioo_builder_b64_ssh_key }}" | base64 -d)
-          echo "SSH_PRIVATE_KEY=$SSH_PRIVATE_KEY" >> "$GITHUB_ENV"
-          
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ env.SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ env.durioo_builder_b64_ssh_key | base64 -d }}
 
       - name: Clone Repo
         run: git clone -b ${{ github.event.inputs.branch }} ${{ env.durioo_builder_repo_mobile }}
