@@ -12,7 +12,6 @@ jobs:
       - name: Load Remote ENV from Protected JSON
         uses: subekti404dev/gha-json-env@v1
         with:
-          style: camel
           url: ${{ secrets.ENV_URL }}
           token: ${{ secrets.ENV_TOKEN }}
 
