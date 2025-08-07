@@ -28,7 +28,7 @@ jobs:
           ssh-private-key: ${{ env.SSH_PRIVATE_KEY }}
 
       - name: Clone Repo
-        run: git clone -b ${{ github.event.inputs.branch }} ${{ durioo_builder_repo_mobile }}
+        run: git clone -b ${{ github.event.inputs.branch }} ${{ env.durioo_builder_repo_mobile }}
 
       - name: Install Utilities
         run: |
