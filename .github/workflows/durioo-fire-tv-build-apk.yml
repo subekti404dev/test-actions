@@ -52,7 +52,7 @@ jobs:
       - name: Write EXPO_TOKEN (base64 decoded) to ~/.expo/state.json
         run: |
           mkdir -p ~/.expo
-          echo "${{ durioo_builder_expo_token }}" | base64 -d > ~/.expo/state.json
+          echo "${{ env.durioo_builder_expo_token }}" | base64 -d > ~/.expo/state.json
 
 
       - name: Install Deps
