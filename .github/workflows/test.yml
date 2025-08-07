@@ -7,7 +7,6 @@ jobs:
  
   test:
     runs-on: ubuntu-latest
-    container: subekti13/torrent-downloader-v2
     steps:
       - name: Export selected secrets to secrets.json
         run: |
