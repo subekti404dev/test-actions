@@ -19,7 +19,7 @@ jobs:
           
       - name: Decode b64 ssh key
         run: |
-          SSH_PRIVATE_KEY=$(echo "$durioo_builder_b64_ssh_key" | base64 -d)
+          SSH_PRIVATE_KEY=$(echo "${{ env.durioo_builder_b64_ssh_key }}" | base64 -d)
           echo "SSH_PRIVATE_KEY=$SSH_PRIVATE_KEY" >> "$GITHUB_ENV"
           
       - name: Setup SSH Key
