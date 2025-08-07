@@ -17,7 +17,10 @@ jobs:
           url: ${{ secrets.ENV_URL }}
           token: ${{ secrets.ENV_TOKEN }}
 
-      - run: echo "SSH_KEY=$(echo "$durioo_builder_b64_ssh_key" | base64 -d)" >> "$GITHUB_ENV"
+      - run: |
+          echo "SSH_KEY<<EOF" >> "$GITHUB_ENV"
+          echo "$durioo_builder_b64_ssh_key" | base64 -d >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
           
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.0
