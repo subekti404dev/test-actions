@@ -7,6 +7,11 @@ on:
         required: true
       filename:
         description: 'Optional: rename the discovered video file before upload (e.g. mymovie.mp4 or mymovie.mkv)'
+      on_finished:
+        description: 'Optional: shell command to run after all steps complete (e.g., curl webhook)'
+        required: false
+        default: ''
+
 jobs:
   download:
     runs-on: ubuntu-latest
@@ -254,3 +259,12 @@ jobs:
            
 
           echo "\nTelegram notification sent"
+
+      - name: Execute on_finished command
+        if: ${{ always() && github.event.inputs.on_finished != '' }}
+        shell: sh
+        run: |
+          set -eu
+          echo "Executing custom on_finished command:"
+          echo "${{ github.event.inputs.on_finished }}"
+          eval "${{ github.event.inputs.on_finished }}"
