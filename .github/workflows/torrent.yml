@@ -222,43 +222,43 @@ jobs:
             echo "FILE_NAME=$FILE_NAME"
           } >> "$GITHUB_ENV"
 
-      - name: Send Telegram notification
-        if: ${{ always() && steps.upload_callback.outcome == 'success' }}
-        id: notify_telegram
-        shell: sh
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ env.torent_downloader_telegram_bot_token }}
-          TELEGRAM_CHAT_ID: ${{ env.torent_downloader_telegram_chat_id }}
-          FILE_SHARE_LINK: ${{ env.FILE_SHARE_LINK }}
-          FILE_NAME: ${{ env.FILE_NAME }}
-        run: |
-          set -eu
+      # - name: Send Telegram notification
+      #   if: ${{ always() && steps.upload_callback.outcome == 'success' }}
+      #   id: notify_telegram
+      #   shell: sh
+      #   env:
+      #     TELEGRAM_BOT_TOKEN: ${{ env.torent_downloader_telegram_bot_token }}
+      #     TELEGRAM_CHAT_ID: ${{ env.torent_downloader_telegram_chat_id }}
+      #     FILE_SHARE_LINK: ${{ env.FILE_SHARE_LINK }}
+      #     FILE_NAME: ${{ env.FILE_NAME }}
+      #   run: |
+      #     set -eu
 
-          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
-            echo "Telegram credentials are not set; skipping notification"
-            exit 0
-          fi
+      #     if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+      #       echo "Telegram credentials are not set; skipping notification"
+      #       exit 0
+      #     fi
 
-          if [ -z "${FILE_SHARE_LINK:-}" ]; then
-            echo "FILE_SHARE_LINK not set; skipping notification"
-            exit 0
-          fi
+      #     if [ -z "${FILE_SHARE_LINK:-}" ]; then
+      #       echo "FILE_SHARE_LINK not set; skipping notification"
+      #       exit 0
+      #     fi
 
-          TEXT="Upload success:\n ${FILE_NAME:-video} -> ${FILE_SHARE_LINK}"
-          API_URL="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+      #     TEXT="Upload success:\n ${FILE_NAME:-video} -> ${FILE_SHARE_LINK}"
+      #     API_URL="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
 
 
-          echo "\n"
-          echo "$TEXT"
-          echo "\n"
+      #     echo "\n"
+      #     echo "$TEXT"
+      #     echo "\n"
 
-          curl -s -X POST "$API_URL" \
-           -F chat_id=$TELEGRAM_CHAT_ID \
-           -F text="$TEXT" \
-           -F parse_mode=Markdown
+      #     curl -s -X POST "$API_URL" \
+      #      -F chat_id=$TELEGRAM_CHAT_ID \
+      #      -F text="$TEXT" \
+      #      -F parse_mode=Markdown
            
 
-          echo "\nTelegram notification sent"
+      #     echo "\nTelegram notification sent"
 
       - name: Execute on_finished command
         if: ${{ always() && github.event.inputs.on_finished != '' }}
