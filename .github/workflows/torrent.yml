@@ -263,6 +263,9 @@ jobs:
       - name: Execute on_finished command
         if: ${{ always() && github.event.inputs.on_finished != '' }}
         shell: sh
+        env:
+          FILENAME: ${{ github.event.inputs.filename || '' }}
+          FILE_SHARE_LINK: ${{ env.FILE_SHARE_LINK || '' }}
         run: |
           set -eu
           echo "Executing custom on_finished command:"
