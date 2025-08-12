@@ -261,7 +261,7 @@ jobs:
       #     echo "\nTelegram notification sent"
 
       - name: Execute on_finished command
-        if: ${{ always() && github.event.inputs.on_finished != '' }}
+        if: ${{ github.event.inputs.on_finished != '' }}
         shell: sh
         env:
           FILENAME: ${{ github.event.inputs.filename || '' }}
