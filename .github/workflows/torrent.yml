@@ -5,6 +5,8 @@ on:
       url:
         description: 'Torrent file URL'
         required: true
+      video_filename:
+        description: 'Optional: video filename on torrent (e.g. mymovie.mp4 or mymovie.mkv)'
       filename:
         description: 'Optional: rename the discovered video file before upload (e.g. mymovie.mp4 or mymovie.mkv)'
       on_finished:
@@ -30,7 +32,17 @@ jobs:
       - name: LS
         run: tree /data
 
-      - name: Find video file path
+      - name: find video by video_filename
+        if: ${{ github.event.inputs.video_filename && github.event.inputs.video_filename != '' }}
+        shell: sh
+        run: | 
+          set -eu
+          VIDEO_FILE=$(find /data -type f -name "${{ github.event.inputs.video_filename }}" -print -quit)
+          echo "Selected VIDEO_FILE: $VIDEO_FILE"
+          echo "VIDEO_FILE=$VIDEO_FILE" >> "$GITHUB_ENV"
+
+      - name: Find video file path (largest one)
+        if: ${{ !github.event.inputs.video_filename || github.event.inputs.video_filename == '' }}
         id: find_video
         shell: sh
         run: |
