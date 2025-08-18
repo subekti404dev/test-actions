@@ -19,16 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     container: subekti13/torrent-downloader-v2
     steps:
+      - uses: actions/checkout@v4
+      
       - name: Load Remote ENV from Protected JSON
         uses: subekti404dev/gha-json-env@v1
         with:
           url: ${{ secrets.ENV_URL }}
           token: ${{ secrets.ENV_TOKEN }}
-
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
 
       - name: Dowload File
         run: torrent download ${{ github.event.inputs.url }}
