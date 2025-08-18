@@ -65,12 +65,27 @@ for (const f of allFiles) {
   }
 }
 
-if (bestFile && bestScore >= 0.95) {
-  console.log(`::set-output name=video_file::${bestFile}`);
-} else if (bestFile) {
-  console.log(`⚠️ No 95%+ match, best fallback: ${bestFile} (${Math.round(bestScore * 100)}%)`);
-  console.log(`::set-output name=video_file::${bestFile}`);
-} else {
-  console.error("❌ No video file found in /data");
+// if (bestFile && bestScore >= 0.95) {
+//   console.log(`::set-output name=video_file::${bestFile}`);
+// } else if (bestFile) {
+//   console.log(`⚠️ No 95%+ match, best fallback: ${bestFile} (${Math.round(bestScore * 100)}%)`);
+//   console.log(`::set-output name=video_file::${bestFile}`);
+// } else {
+//   console.error("❌ No video file found in /data");
+//   process.exit(1);
+// }
+
+
+if (!bestFile) {
+  console.error("❌ No .mp4 file found in /data");
   process.exit(1);
 }
+
+if (bestScore >= 0.95) {
+  console.log(`✅ Found match: ${bestFile}`);
+} else {
+  console.log(`⚠️ Best fallback: ${bestFile} (${Math.round(bestScore * 100)}% similar)`);
+}
+
+// Write to GitHub Actions output file
+fs.appendFileSync(process.env.GITHUB_OUTPUT, `video_file=${bestFile}\n`);
