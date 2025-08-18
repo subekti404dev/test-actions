@@ -34,13 +34,16 @@ jobs:
 
       - name: find video by video_filename
         if: ${{ github.event.inputs.video_filename && github.event.inputs.video_filename != '' }}
-        shell: sh
-        run: | 
-          set -eu
-          VIDEO_FILE=$(find /data -type f -name "${{ github.event.inputs.video_filename }}" -print -quit)
-          echo "Selected VIDEO_FILE: $VIDEO_FILE"
-          echo "VIDEO_FILE=$VIDEO_FILE" >> "$GITHUB_ENV"
+        id: findvideo
+        run: node find-video.js "${{ inputs.video_filename }}"
+        env:
+          TARGET: ${{ inputs.video_filename }}
 
+      - name: Show result
+        run: |
+          echo "VIDEO_FILE=${{ steps.findvideo.outputs.video_file }}"
+          echo "VIDEO_FILE=${{ steps.findvideo.outputs.video_file }}" >> "$GITHUB_ENV"
+          
       - name: Find video file path (largest one)
         if: ${{ !github.event.inputs.video_filename || github.event.inputs.video_filename == '' }}
         id: find_video
