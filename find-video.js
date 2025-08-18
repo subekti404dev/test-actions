@@ -51,7 +51,8 @@ function walk(dir) {
   return results;
 }
 
-const allFiles = walk(searchDir).filter((f) => f.endsWith(".mp4"));
+const allFiles = walk(searchDir)
+  // .filter((f) => f.endsWith(".mp4"));
 
 let bestFile = null;
 let bestScore = 0;
@@ -70,6 +71,6 @@ if (bestFile && bestScore >= 0.95) {
   console.log(`⚠️ No 95%+ match, best fallback: ${bestFile} (${Math.round(bestScore * 100)}%)`);
   console.log(`::set-output name=video_file::${bestFile}`);
 } else {
-  console.error("❌ No .mp4 file found in /data");
+  console.error("❌ No video file found in /data");
   process.exit(1);
 }
