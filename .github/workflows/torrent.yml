@@ -17,7 +17,7 @@ on:
 jobs:
   download:
     runs-on: ubuntu-latest
-    container: subekti13/torrent-downloader-v2
+    container: subekti13/torrent-downloader-v2:latest
     steps:
       - uses: actions/checkout@v4
       
