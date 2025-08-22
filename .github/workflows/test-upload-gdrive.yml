@@ -6,7 +6,7 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      - uses: subekti404dev/test-actions/.github/composite/setup-rclone@main
+      - uses: subekti404dev/test-actions/.github/composite/setup-rclone.yml@main
 
       - name: Create sample file and upload
         run: |
