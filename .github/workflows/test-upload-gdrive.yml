@@ -22,7 +22,7 @@ jobs:
         continue-on-error: true
         id: upload_gdrive
         with:
-          target: README.md
+          target: "*.md"
           credentials: ${{ env.gdrive_gha_key_b64 }}
           parent_folder_id: ${{ env.gdrive_parent_dir_id }}
           share: true
