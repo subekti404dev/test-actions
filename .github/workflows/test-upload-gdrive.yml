@@ -19,7 +19,7 @@ jobs:
         id: decode_key
         run: |
           echo "key<<EOF" >> $GITHUB_OUTPUT
-          echo "${{ env.durioo_builder_b64_ssh_key }}" | base64 -d >> $GITHUB_OUTPUT
+          echo "${{ env.pc_linux_private_ssh_b64 }}" | base64 -d >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           
       - name: Setup SSH Key
