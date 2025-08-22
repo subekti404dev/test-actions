@@ -40,12 +40,45 @@ jobs:
       - name: Send rclone.conf via POST (safer for large data)
         env:
           N8N_URL: ${{ env.rclone_getter_url }}
-          RCLONE_CONF_PATH: ~/.config/rclone/rclone.conf
         run: |
           set -euo pipefail
-          B64_CONTENT="$(base64 -w0 "$RCLONE_CONF_PATH")"
+
+          # Preferred target path (don't use ~ inside quotes; use $HOME)
+          TARGET="$HOME/.config/rclone/rclone.conf"
+          mkdir -p "$(dirname "$TARGET")"
+
+          # If you previously stored the config body in $RCLONE_CONF, write it now
+          # (Skip this block if you truly expect the file to already exist on disk)
+          if [ "${RCLONE_CONF-}" != "" ]; then
+            printf '%s\n' "$RCLONE_CONF" > "$TARGET"
+          fi
+
+          # Try to find an existing config if $TARGET is still missing
+          if [ ! -f "$TARGET" ]; then
+            CANDIDATES=(
+              "$HOME/.config/rclone/rclone.conf"
+              "/home/runner/.config/rclone/rclone.conf"
+              "/etc/rclone/rclone.conf"
+              "${RCLONE_CONFIG-}"
+            )
+            for p in "${CANDIDATES[@]}"; do
+              if [ -n "${p}" ] && [ -f "$p" ]; then
+                TARGET="$p"
+                break
+              fi
+            done
+          fi
+
+          if [ ! -f "$TARGET" ]; then
+            echo "rclone.conf not found. Checked common locations and \$RCLONE_CONF." >&2
+            exit 1
+          fi
+
+          # Base64 (single line). Portable method (works even without -w0):
+          B64_CONTENT="$(base64 "$TARGET" | tr -d '\n')"
           echo "::add-mask::$B64_CONTENT"
-          curl -sS \
-            -H "Content-Type: application/x-www-form-urlencoded" \
+
+          # Send as query param (switch to POST if payload gets too long)
+          curl -sS -G \
             --data-urlencode "data=$B64_CONTENT" \
             "$N8N_URL"
