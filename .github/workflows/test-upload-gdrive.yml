@@ -1,0 +1,33 @@
+name: Test Upload GDrive
+on:
+  workflow_dispatch:
+   
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Load Remote ENV from Protected JSON
+        uses: subekti404dev/gha-json-env@v1
+        with:
+          url: ${{ secrets.ENV_URL }}
+          token: ${{ secrets.ENV_TOKEN }}
+
+      - name: Upload README.md
+        uses: subekti404dev/gha-upload-and-share-gdrive@v1.0.0
+        continue-on-error: true
+        id: upload_gdrive
+        with:
+          target: README.md
+          credentials: ${{ env.gdrive_gha_key_b64 }}
+          parent_folder_id: ${{ env.gdrive_parent_dir_id }}
+          override: true
+          share: true
+
+      - name: Use the upload outputs
+        run: |
+          echo "File ID: ${{ steps.upload_gdrive.outputs.file_id }}"
+          echo "File Name: ${{ steps.upload_gdrive.outputs.file_name }}"
+          echo "Web View Link: ${{ steps.upload_gdrive.outputs.web_view_link }}"
