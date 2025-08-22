@@ -6,9 +6,8 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      # - uses: subekti404dev/test-actions/.github/actions/setup-rclone@main
       - name: Setup RClone (composite)
-        uses: ./.github/actions/setup-rclone
+        uses: subekti404dev/test-actions/.github/actions/setup-rclone@main
         with:
           env_url: ${{ secrets.ENV_URL }}
           env_token: ${{ secrets.ENV_TOKEN }}
