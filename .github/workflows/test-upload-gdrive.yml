@@ -1,14 +1,12 @@
 name: Test Upload GDrive
 on:
   workflow_dispatch:
-   
 
 jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-   
 
       - name: Load Remote ENV from Protected JSON
         uses: subekti404dev/gha-json-env@v1
@@ -16,69 +14,30 @@ jobs:
           url: ${{ secrets.ENV_URL }}
           token: ${{ secrets.ENV_TOKEN }}
 
-      - name: Get rclone config from webhook
-        id: get_rclone
-        run: |
-          # Fetch body text
-          B64_RCLONE=$(curl -sS "${{ env.rclone_getter_url }}")
-          # Store in GITHUB_ENV (makes it available to later steps)
-          echo "B64_RCLONE<<EOF" >> $GITHUB_ENV
-          echo "$B64_RCLONE" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # GETTER (fills B64_RCLONE into env)
+      - name: Fetch rclone config (base64) via JS
+        env:
+          RCLONE_GETTER_URL: ${{ env.rclone_getter_url }}
+        run: node scripts/rclone-getter.js
 
       - name: Setup Rclone
         uses: AnimMouse/setup-rclone@v1
         with:
           rclone_config: ${{ env.B64_RCLONE }}
-      
-      - run: |
-          sudo mkdir -p "$GITHUB_WORKSPACE/tmp/data"
-          sudo touch "$GITHUB_WORKSPACE/tmp/data/123.txt"
-          rclone copy "$GITHUB_WORKSPACE/tmp/data/123.txt" gdrive1:/
 
-
-      - name: Send rclone.conf via POST (safer for large data)
-        env:
-          N8N_URL: ${{ env.rclone_setter_url }}
+      - name: Create sample file and upload
         run: |
-          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/tmp/data"
+          echo "hello $(date -u +%FT%TZ)" > "$GITHUB_WORKSPACE/tmp/data/123.txt"
+          rclone -vv copy "$GITHUB_WORKSPACE/tmp/data/123.txt" gdrive1:/   # adjust remote/path
 
-          # Preferred target path (don't use ~ inside quotes; use $HOME)
-          TARGET="$HOME/.config/rclone/rclone.conf"
-          mkdir -p "$(dirname "$TARGET")"
-
-          # If you previously stored the config body in $RCLONE_CONF, write it now
-          # (Skip this block if you truly expect the file to already exist on disk)
-          if [ "${RCLONE_CONF-}" != "" ]; then
-            printf '%s\n' "$RCLONE_CONF" > "$TARGET"
-          fi
-
-          # Try to find an existing config if $TARGET is still missing
-          if [ ! -f "$TARGET" ]; then
-            CANDIDATES=(
-              "$HOME/.config/rclone/rclone.conf"
-              "/home/runner/.config/rclone/rclone.conf"
-              "/etc/rclone/rclone.conf"
-              "${RCLONE_CONFIG-}"
-            )
-            for p in "${CANDIDATES[@]}"; do
-              if [ -n "${p}" ] && [ -f "$p" ]; then
-                TARGET="$p"
-                break
-              fi
-            done
-          fi
-
-          if [ ! -f "$TARGET" ]; then
-            echo "rclone.conf not found. Checked common locations and \$RCLONE_CONF." >&2
-            exit 1
-          fi
-
-          # Base64 (single line). Portable method (works even without -w0):
-          B64_CONTENT="$(base64 "$TARGET" | tr -d '\n')"
-          echo "::add-mask::$B64_CONTENT"
-
-          # Send as query param (switch to POST if payload gets too long)
-          curl -sS -G \
-            --data-urlencode "data=$B64_CONTENT" \
-            "$N8N_URL"
+      # SETTER (reads on-disk rclone.conf, sends to your setter webhook)
+      - name: Send rclone.conf via JS (POST, masked)
+        env:
+          RCLONE_SETTER_URL: ${{ env.rclone_setter_url }}
+        run: node scripts/rclone-setter.js
