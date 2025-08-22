@@ -240,6 +240,7 @@ jobs:
       #     } >> "$GITHUB_ENV"
 
       - name: Upload file to lixstream (composite)
+        id: upload_lixstream
         uses: subekti404dev/test-actions/.github/actions/upload-lixstream@main
         with:
           env_url: ${{ secrets.ENV_URL }}
@@ -252,7 +253,7 @@ jobs:
         shell: sh
         env:
           FILENAME: ${{ github.event.inputs.filename || '' }}
-          FILE_SHARE_LINK: ${{ env.FILE_SHARE_LINK || '' }}
+          FILE_SHARE_LINK: ${{ steps.upload_lixstream.outputs.FILE_SHARE_LINK || '' }}
         run: |
           set -eu
           echo "Executing custom on_finished command:"
