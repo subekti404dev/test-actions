@@ -7,6 +7,7 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
+      - run: apt install sshpass
       - uses: actions/checkout@v4
 
       - name: Load Remote ENV from Protected JSON
@@ -37,7 +38,7 @@ jobs:
           rclone copy 123.txt gdrive1:/
 
       - run: | 
-          scp 123.txt "root@${{ env.server1_host }}:/root/"
+          sshpass "${{ env.server1_pass }}" scp 123.txt "root@${{ env.server1_host }}:/root/"
           ls -lah
 
       
