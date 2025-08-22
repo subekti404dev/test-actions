@@ -6,29 +6,7 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Load Remote ENV from Protected JSON
-        uses: subekti404dev/gha-json-env@v1
-        with:
-          url: ${{ secrets.ENV_URL }}
-          token: ${{ secrets.ENV_TOKEN }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      # GETTER (fills B64_RCLONE into env)
-      - name: Fetch rclone config (base64) via JS
-        env:
-          RCLONE_GETTER_URL: ${{ env.rclone_getter_url }}
-        run: node scripts/rclone-getter.js
-
-      - name: Setup Rclone
-        uses: AnimMouse/setup-rclone@v1
-        with:
-          rclone_config: ${{ env.B64_RCLONE }}
+      - uses: ../composite/setup-rclone
 
       - name: Create sample file and upload
         run: |
@@ -36,8 +14,4 @@ jobs:
           echo "hello $(date -u +%FT%TZ)" > "$GITHUB_WORKSPACE/tmp/data/123.txt"
           rclone -vv copy "$GITHUB_WORKSPACE/tmp/data/123.txt" gdrive1:/   # adjust remote/path
 
-      # SETTER (reads on-disk rclone.conf, sends to your setter webhook)
-      - name: Send rclone.conf via JS (POST, masked)
-        env:
-          RCLONE_SETTER_URL: ${{ env.rclone_setter_url }}
-        run: node scripts/rclone-setter.js
+
