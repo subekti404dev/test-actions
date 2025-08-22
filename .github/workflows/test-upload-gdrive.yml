@@ -33,11 +33,23 @@ jobs:
           FTP_USER: ${{ env.server1_ftp_user }}
           FTP_PASS: ${{ env.server1_ftp_pass }}
         run: |
+          set -euo pipefail
+
+          # Build absolute local path and verify it exists
+          LOCAL_DIR="${GITHUB_WORKSPACE}/tmp/data"
+          REMOTE_DIR="/"
+          if [ ! -d "$LOCAL_DIR" ]; then
+            echo "Local dir missing: $LOCAL_DIR"
+            ls -la "${GITHUB_WORKSPACE}" || true
+            exit 1
+          fi
+
+          # No extra quotes INSIDE the -e string; variables are expanded by bash here
           lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" -e "
             set ftp:passive-mode on
             set xfer:log false
             set net:max-retries 3
             set net:timeout 30
-            mirror -R --parallel=3 --verbose --exclude-glob .git/ \"$GITHUB_WORKSPACE/tmp/data\" \"/\"
+            mirror -R --parallel=3 --verbose --exclude-glob .git/ $LOCAL_DIR $REMOTE_DIR
             bye
           "
