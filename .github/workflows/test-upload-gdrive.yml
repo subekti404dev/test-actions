@@ -27,29 +27,34 @@ jobs:
           sudo touch "$GITHUB_WORKSPACE/tmp/data/123.txt"
           rclone copy "$GITHUB_WORKSPACE/tmp/data/123.txt" gdrive1:/
 
-      - name: Upload via FTP (no heredoc)
+      - name: Upload via FTP — Full Sync (with delete)
         env:
           FTP_HOST: ${{ env.server1_ftp_host }}
           FTP_USER: ${{ env.server1_ftp_user }}
           FTP_PASS: ${{ env.server1_ftp_pass }}
+          LOCAL_DIR: ${{ github.workspace }}/tmp/data
+          REMOTE_DIR: /public_html/app   # <— set this carefully
+          FORCE_DELETE: "true"           # set to "false" to block delete
         run: |
           set -euo pipefail
+          ls -la "$LOCAL_DIR" || (echo "Missing $LOCAL_DIR"; exit 1)
 
-          # Build absolute local path and verify it exists
-          LOCAL_DIR="${GITHUB_WORKSPACE}/tmp/data"
-          REMOTE_DIR="/"
-          if [ ! -d "$LOCAL_DIR" ]; then
-            echo "Local dir missing: $LOCAL_DIR"
-            ls -la "${GITHUB_WORKSPACE}" || true
+          if [ "${FORCE_DELETE}" != "true" ]; then
+            echo "Refusing to run destructive sync (FORCE_DELETE!=true)."
             exit 1
           fi
 
-          # No extra quotes INSIDE the -e string; variables are expanded by bash here
           lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" -e "
             set ftp:passive-mode on
             set xfer:log false
             set net:max-retries 3
             set net:timeout 30
-            mirror -R --parallel=3 --verbose --exclude-glob .git/ $LOCAL_DIR $REMOTE_DIR
+            # Preview first? uncomment -n to dry-run:
+            # mirror -n -R --parallel=3 --verbose \
+            mirror -R --parallel=3 --verbose \
+              --delete --delete-first \
+              --no-perms \
+              --exclude-glob .git/ \
+              \"$LOCAL_DIR\" \"$REMOTE_DIR\"
             bye
-          "
+            "
