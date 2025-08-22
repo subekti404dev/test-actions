@@ -30,7 +30,7 @@ jobs:
        # ----- Upload (mirror local -> remote) -----
       - name: Upload via FTP (recursive, passive)
         run: |
-          lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" <<'EOL'
+          lftp -u "${{ env.server1_ftp_user }}","${{ env.server1_ftp_pass }}" "${{ env.server1_ftp_host }}" <<'EOL'
           set ftp:passive-mode on
           set xfer:log false
           set net:max-retries 3
