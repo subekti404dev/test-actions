@@ -65,7 +65,7 @@ runs:
       env:
         UPLOAD_URL: ${{ steps.register_file.outputs.UPLOAD_URL }}
         UPLOAD_CONTENT_TYPE: ${{ steps.register_file.outputs.UPLOAD_CONTENT_TYPE }}
-        VIDEO_FILE: ${{ inputs.VIDEO_FILE }}
+        VIDEO_FILE: ${{ inputs.file_path }}
       run: |
         set -eu
         if [ -z "${UPLOAD_URL:-}" ] || [ -z "${UPLOAD_CONTENT_TYPE:-}" ] || [ -z "${VIDEO_FILE:-}" ]; then
