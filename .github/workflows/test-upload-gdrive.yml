@@ -23,22 +23,21 @@ jobs:
           rclone_config: ${{ env.rclone_config_b64 }}
       
       - run: |
-          sudo mkdir -p /tmp/data
-          sudo touch /tmp/data/123.txt
-          rclone copy /tmp/data/123.txt gdrive1:/
+          sudo mkdir -p "$GITHUB_WORKSPACE/tmp/data"
+          sudo touch "$GITHUB_WORKSPACE/tmp/data/123.txt"
+          rclone copy "$GITHUB_WORKSPACE/tmp/data/123.txt" gdrive1:/
 
-       # ----- Upload (mirror local -> remote) -----
-      - name: Upload via FTP (recursive, passive)
+      - name: Upload via FTP (no heredoc)
+        env:
+          FTP_HOST: ${{ env.server1_ftp_host }}
+          FTP_USER: ${{ env.server1_ftp_user }}
+          FTP_PASS: ${{ env.server1_ftp_pass }}
         run: |
-          lftp -u "${{ env.server1_ftp_user }}","${{ env.server1_ftp_pass }}" "${{ env.server1_ftp_host }}" <<'EOL'
-          set ftp:passive-mode on
-          set xfer:log false
-          set net:max-retries 3
-          set net:timeout 30
-          # For FTPS (explicit TLS), uncomment:
-          # set ftp:ssl-force true
-          # set ftp:ssl-protect-data true
-          # set ssl:verify-certificate no   # only if your cert is self-signed
-          mirror -R --parallel=3 --verbose --exclude-glob .git/ ./tmp/data ./
-          bye
-          EOL    
+          lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" -e "
+            set ftp:passive-mode on
+            set xfer:log false
+            set net:max-retries 3
+            set net:timeout 30
+            mirror -R --parallel=3 --verbose --exclude-glob .git/ \"$GITHUB_WORKSPACE/tmp/data\" \"/\"
+            bye
+          "
