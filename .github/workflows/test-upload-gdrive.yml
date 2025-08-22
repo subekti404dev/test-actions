@@ -15,6 +15,8 @@ jobs:
           url: ${{ secrets.ENV_URL }}
           token: ${{ secrets.ENV_TOKEN }}
 
+      - run: ls -lah
+
       - name: Upload README.md
         uses: subekti404dev/gha-upload-and-share-gdrive@v1.0.0
         continue-on-error: true
