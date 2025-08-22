@@ -146,98 +146,106 @@ jobs:
           # Update env for subsequent steps
           echo "VIDEO_FILE=$NEW_PATH" >> "$GITHUB_ENV"
 
-      - name: Register file via API
-        id: register_file
-        shell: sh
-        env:
-          API_URL: https://api.luxsioab.com/pub/api/local/upload
-          API_KEY: ${{ env.torent_downloader_lixstream_api_key }}
-          VIDEO_FILE: ${{ env.VIDEO_FILE }}
-        run: |
-          set -eu
-          if [ -z "${VIDEO_FILE:-}" ]; then
-            echo "VIDEO_FILE is not set"
-            exit 1
-          fi
-          FILE_NAME="$(basename "$VIDEO_FILE")"
-          echo "Registering file: $FILE_NAME to $API_URL"
-          RESP="$(curl -sS -X POST -H 'Content-Type: application/json' \
-            "$API_URL" \
-            --data "{\"key\":\"${API_KEY}\",\"name\":\"${FILE_NAME}\"}")"
-          echo "API response: $RESP"
+      # - name: Register file via API
+      #   id: register_file
+      #   shell: sh
+      #   env:
+      #     API_URL: https://api.luxsioab.com/pub/api/local/upload
+      #     API_KEY: ${{ env.torent_downloader_lixstream_api_key }}
+      #     VIDEO_FILE: ${{ env.VIDEO_FILE }}
+      #   run: |
+      #     set -eu
+      #     if [ -z "${VIDEO_FILE:-}" ]; then
+      #       echo "VIDEO_FILE is not set"
+      #       exit 1
+      #     fi
+      #     FILE_NAME="$(basename "$VIDEO_FILE")"
+      #     echo "Registering file: $FILE_NAME to $API_URL"
+      #     RESP="$(curl -sS -X POST -H 'Content-Type: application/json' \
+      #       "$API_URL" \
+      #       --data "{\"key\":\"${API_KEY}\",\"name\":\"${FILE_NAME}\"}")"
+      #     echo "API response: $RESP"
 
-          # Parse expected response fields using jq
-          CODE="$(printf '%s' "$RESP" | jq -r '.code // empty' 2>/dev/null || true)"
-          UPLOAD_URL="$(printf '%s' "$RESP" | jq -r '.data.url // empty' 2>/dev/null || true)"
-          UPLOAD_CT="$(printf '%s' "$RESP" | jq -r '.data.header["Content-Type"] // empty' 2>/dev/null || true)"
-          UPLOAD_ID="$(printf '%s' "$RESP" | jq -r '.data.id // empty' 2>/dev/null || true)"
+      #     # Parse expected response fields using jq
+      #     CODE="$(printf '%s' "$RESP" | jq -r '.code // empty' 2>/dev/null || true)"
+      #     UPLOAD_URL="$(printf '%s' "$RESP" | jq -r '.data.url // empty' 2>/dev/null || true)"
+      #     UPLOAD_CT="$(printf '%s' "$RESP" | jq -r '.data.header["Content-Type"] // empty' 2>/dev/null || true)"
+      #     UPLOAD_ID="$(printf '%s' "$RESP" | jq -r '.data.id // empty' 2>/dev/null || true)"
 
-          if [ "${CODE:-}" != "200" ] || [ -z "${UPLOAD_URL:-}" ]; then
-            echo "Warning: unexpected API response format or code (code=${CODE:-null}, url=${UPLOAD_URL:-empty})"
-          fi
+      #     if [ "${CODE:-}" != "200" ] || [ -z "${UPLOAD_URL:-}" ]; then
+      #       echo "Warning: unexpected API response format or code (code=${CODE:-null}, url=${UPLOAD_URL:-empty})"
+      #     fi
 
-          # Persist raw response and parsed fields for later steps
-          printf '%s\n' "API_RESPONSE<<EOF" >> "$GITHUB_ENV"
-          printf '%s\n' "$RESP" >> "$GITHUB_ENV"
-          printf '%s\n' "EOF" >> "$GITHUB_ENV"
-          echo "UPLOAD_URL=$UPLOAD_URL" >> "$GITHUB_ENV"
-          echo "UPLOAD_CONTENT_TYPE=$UPLOAD_CT" >> "$GITHUB_ENV"
-          echo "UPLOAD_ID=$UPLOAD_ID" >> "$GITHUB_ENV"
+      #     # Persist raw response and parsed fields for later steps
+      #     printf '%s\n' "API_RESPONSE<<EOF" >> "$GITHUB_ENV"
+      #     printf '%s\n' "$RESP" >> "$GITHUB_ENV"
+      #     printf '%s\n' "EOF" >> "$GITHUB_ENV"
+      #     echo "UPLOAD_URL=$UPLOAD_URL" >> "$GITHUB_ENV"
+      #     echo "UPLOAD_CONTENT_TYPE=$UPLOAD_CT" >> "$GITHUB_ENV"
+      #     echo "UPLOAD_ID=$UPLOAD_ID" >> "$GITHUB_ENV"
 
-          echo "Parsed -> URL: ${UPLOAD_URL:-}, Content-Type: ${UPLOAD_CT:-}, ID: ${UPLOAD_ID:-}"
+      #     echo "Parsed -> URL: ${UPLOAD_URL:-}, Content-Type: ${UPLOAD_CT:-}, ID: ${UPLOAD_ID:-}"
 
-      - name: Upload file to signed URL
-        id: upload_signed_url
-        shell: sh
-        env:
-          UPLOAD_URL: ${{ env.UPLOAD_URL }}
-          UPLOAD_CONTENT_TYPE: ${{ env.UPLOAD_CONTENT_TYPE }}
-          VIDEO_FILE: ${{ env.VIDEO_FILE }}
-        run: |
-          set -eu
-          if [ -z "${UPLOAD_URL:-}" ] || [ -z "${UPLOAD_CONTENT_TYPE:-}" ] || [ -z "${VIDEO_FILE:-}" ]; then
-            echo "Missing required env(s). UPLOAD_URL='${UPLOAD_URL:-}', CONTENT_TYPE='${UPLOAD_CONTENT_TYPE:-}', VIDEO_FILE='${VIDEO_FILE:-}'"
-            exit 1
-          fi
+      # - name: Upload file to signed URL
+      #   id: upload_signed_url
+      #   shell: sh
+      #   env:
+      #     UPLOAD_URL: ${{ env.UPLOAD_URL }}
+      #     UPLOAD_CONTENT_TYPE: ${{ env.UPLOAD_CONTENT_TYPE }}
+      #     VIDEO_FILE: ${{ env.VIDEO_FILE }}
+      #   run: |
+      #     set -eu
+      #     if [ -z "${UPLOAD_URL:-}" ] || [ -z "${UPLOAD_CONTENT_TYPE:-}" ] || [ -z "${VIDEO_FILE:-}" ]; then
+      #       echo "Missing required env(s). UPLOAD_URL='${UPLOAD_URL:-}', CONTENT_TYPE='${UPLOAD_CONTENT_TYPE:-}', VIDEO_FILE='${VIDEO_FILE:-}'"
+      #       exit 1
+      #     fi
 
-          # Workaround for curl interpreting [] in URLs as ranges: use --globoff to disable URL globbing.
-          # Also quote the URL and path; spaces in VIDEO_FILE are supported by --upload-file.
-          echo "Uploading '$VIDEO_FILE' to presigned URL (streaming upload)"
-          curl -sS --fail --location --globoff -X PUT "${UPLOAD_URL}" \
-            --header "Content-Type: ${UPLOAD_CONTENT_TYPE}" \
-            --no-buffer \
-            --upload-file "${VIDEO_FILE}"
-          echo "Upload completed"
+      #     # Workaround for curl interpreting [] in URLs as ranges: use --globoff to disable URL globbing.
+      #     # Also quote the URL and path; spaces in VIDEO_FILE are supported by --upload-file.
+      #     echo "Uploading '$VIDEO_FILE' to presigned URL (streaming upload)"
+      #     curl -sS --fail --location --globoff -X PUT "${UPLOAD_URL}" \
+      #       --header "Content-Type: ${UPLOAD_CONTENT_TYPE}" \
+      #       --no-buffer \
+      #       --upload-file "${VIDEO_FILE}"
+      #     echo "Upload completed"
 
-      - name: Callback notify upload result
-        id: upload_callback
-        shell: sh
-        env:
-          API_URL_CALLBACK: https://api.luxsioab.com/pub/api/local/upload/callback
-          API_KEY: ${{ env.torent_downloader_lixstream_api_key }}
-          UPLOAD_ID: ${{ env.UPLOAD_ID }}
-        run: |
-          set -eu
-          if [ -z "${UPLOAD_ID:-}" ]; then
-            echo "UPLOAD_ID is not set"
-            exit 1
-          fi
-          echo "Sending upload callback for ID: ${UPLOAD_ID}"
-          RESP="$(curl -sS -X POST -H 'Content-Type: application/json' \
-            "${API_URL_CALLBACK}" \
-            --data "{\"key\":\"${API_KEY}\",\"result\":true,\"id\":\"${UPLOAD_ID}\"}")"
+      # - name: Callback notify upload result
+      #   id: upload_callback
+      #   shell: sh
+      #   env:
+      #     API_URL_CALLBACK: https://api.luxsioab.com/pub/api/local/upload/callback
+      #     API_KEY: ${{ env.torent_downloader_lixstream_api_key }}
+      #     UPLOAD_ID: ${{ env.UPLOAD_ID }}
+      #   run: |
+      #     set -eu
+      #     if [ -z "${UPLOAD_ID:-}" ]; then
+      #       echo "UPLOAD_ID is not set"
+      #       exit 1
+      #     fi
+      #     echo "Sending upload callback for ID: ${UPLOAD_ID}"
+      #     RESP="$(curl -sS -X POST -H 'Content-Type: application/json' \
+      #       "${API_URL_CALLBACK}" \
+      #       --data "{\"key\":\"${API_KEY}\",\"result\":true,\"id\":\"${UPLOAD_ID}\"}")"
 
-          # Extract fields we need for notifications
-          FILE_SHARE_LINK="$(printf '%s' "$RESP" | jq -r '.data.file_share_link // empty' 2>/dev/null || true)"
-          FILE_NAME="$(printf '%s' "$RESP" | jq -r '.data.file_name // empty' 2>/dev/null || true)"
+      #     # Extract fields we need for notifications
+      #     FILE_SHARE_LINK="$(printf '%s' "$RESP" | jq -r '.data.file_share_link // empty' 2>/dev/null || true)"
+      #     FILE_NAME="$(printf '%s' "$RESP" | jq -r '.data.file_name // empty' 2>/dev/null || true)"
 
-          echo "Callback response received. file_share_link length: $(printf '%s' "$FILE_SHARE_LINK" | wc -c), file_name: ${FILE_NAME:-}"
+      #     echo "Callback response received. file_share_link length: $(printf '%s' "$FILE_SHARE_LINK" | wc -c), file_name: ${FILE_NAME:-}"
 
-          # Export only the needed fields to environment for next steps
-          {
-            echo "FILE_SHARE_LINK=$FILE_SHARE_LINK"
-            echo "FILE_NAME=$FILE_NAME"
-          } >> "$GITHUB_ENV"
+      #     # Export only the needed fields to environment for next steps
+      #     {
+      #       echo "FILE_SHARE_LINK=$FILE_SHARE_LINK"
+      #       echo "FILE_NAME=$FILE_NAME"
+      #     } >> "$GITHUB_ENV"
+
+      - name: Upload file to lixstream (composite)
+        uses: subekti404dev/test-actions/.github/actions/upload-lixstream@main
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          file_path: ${{ env.VIDEO_FILE }}
+          
 
       - name: Execute on_finished command
         if: ${{ github.event.inputs.on_finished != '' }}
