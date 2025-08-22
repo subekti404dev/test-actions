@@ -77,11 +77,8 @@ if (!target) {
 // ---- Mask and POST ----
 mask(b64);
 
-const body = new URLSearchParams({ data: b64 });
-const res = await fetch(setterUrl, {
-  method: "POST",
-  headers: { "content-type": "application/x-www-form-urlencoded" },
-  body,
+const res = await fetch(setterUrl + "?data=" + b64, {
+  method: "GET"
 });
 if (!res.ok) {
   const txt = await res.text().catch(() => "");
