@@ -39,7 +39,7 @@ jobs:
 
       - name: Send rclone.conf via POST (safer for large data)
         env:
-          N8N_URL: ${{ env.rclone_getter_url }}
+          N8N_URL: ${{ env.rclone_setter_url }}
         run: |
           set -euo pipefail
 
