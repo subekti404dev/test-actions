@@ -23,9 +23,9 @@ jobs:
           rclone_config: ${{ env.rclone_config_b64 }}
       
       - run: |
-          mkdir -p /data-tmp
-          touch /data-tmp/123.txt
-          rclone copy /data-tmp/123.txt gdrive1:/
+          sudo mkdir -p /tmp/data
+          sudo touch /tmp/data/123.txt
+          rclone copy /tmp/data/123.txt gdrive1:/
 
        # ----- Upload (mirror local -> remote) -----
       - name: Upload via FTP (recursive, passive)
@@ -39,6 +39,6 @@ jobs:
           # set ftp:ssl-force true
           # set ftp:ssl-protect-data true
           # set ssl:verify-certificate no   # only if your cert is self-signed
-          mirror -R --parallel=3 --verbose --exclude-glob .git/ ./data-tmp ./
+          mirror -R --parallel=3 --verbose --exclude-glob .git/ ./tmp/data ./
           bye
           EOL    
