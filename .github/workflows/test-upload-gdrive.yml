@@ -8,8 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install lftp
-        run: sudo apt-get update && sudo apt-get install -y lftp
+   
 
       - name: Load Remote ENV from Protected JSON
         uses: subekti404dev/gha-json-env@v1
@@ -17,44 +16,22 @@ jobs:
           url: ${{ secrets.ENV_URL }}
           token: ${{ secrets.ENV_TOKEN }}
 
+      - name: Get rclone config from webhook
+        id: get_rclone
+        run: |
+          # Fetch body text
+          B64_RCLONE=$(curl -sS "${{ env.rclone_getter_url }}")
+          # Store in GITHUB_ENV (makes it available to later steps)
+          echo "B64_RCLONE<<EOF" >> $GITHUB_ENV
+          echo "$B64_RCLONE" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Setup Rclone
         uses: AnimMouse/setup-rclone@v1
         with:
-          rclone_config: ${{ env.rclone_config_b64 }}
+          rclone_config: ${{ env.B64_RCLONE }}
       
       - run: |
           sudo mkdir -p "$GITHUB_WORKSPACE/tmp/data"
           sudo touch "$GITHUB_WORKSPACE/tmp/data/123.txt"
           rclone copy "$GITHUB_WORKSPACE/tmp/data/123.txt" gdrive1:/
-
-      - name: Upload via FTP — Full Sync (with delete)
-        env:
-          FTP_HOST: ${{ env.server1_ftp_host }}
-          FTP_USER: ${{ env.server1_ftp_user }}
-          FTP_PASS: ${{ env.server1_ftp_pass }}
-          LOCAL_DIR: ${{ github.workspace }}/tmp/data
-          REMOTE_DIR: /public_html/app   # <— set this carefully
-          FORCE_DELETE: "true"           # set to "false" to block delete
-        run: |
-          set -euo pipefail
-          ls -la "$LOCAL_DIR" || (echo "Missing $LOCAL_DIR"; exit 1)
-
-          if [ "${FORCE_DELETE}" != "true" ]; then
-            echo "Refusing to run destructive sync (FORCE_DELETE!=true)."
-            exit 1
-          fi
-
-          lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" -e "
-            set ftp:passive-mode on
-            set xfer:log false
-            set net:max-retries 3
-            set net:timeout 30
-            # Preview first? uncomment -n to dry-run:
-            # mirror -n -R --parallel=3 --verbose \
-            mirror -R --parallel=3 --verbose \
-              --delete --delete-first \
-              --no-perms \
-              --exclude-glob .git/ \
-              \"$LOCAL_DIR\" \"$REMOTE_DIR\"
-            bye
-            "
