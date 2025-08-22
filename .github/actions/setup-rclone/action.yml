@@ -1,4 +1,13 @@
 name: Setup RClone
+description: "Load protected env JSON, fetch/install rclone config, then POST the on-disk rclone.conf"
+inputs:
+  env_url:
+    description: "Protected JSON URL"
+    required: true
+  env_token:
+    description: "Bearer or token for the protected JSON"
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -7,16 +16,17 @@ runs:
     - name: Load Remote ENV from Protected JSON
       uses: subekti404dev/gha-json-env@v1
       with:
-        url: ${{ secrets.ENV_URL }}
-        token: ${{ secrets.ENV_TOKEN }}
+        url: ${{ inputs.env_url }}
+        token: ${{ inputs.env_token }}
 
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: "20"
 
-    # GETTER (fills B64_RCLONE into env)
+    # GETTER (fills B64_RCLONE into $GITHUB_ENV)
     - name: Fetch rclone config (base64) via JS
+      shell: bash
       env:
         RCLONE_GETTER_URL: ${{ env.rclone_getter_url }}
       run: node scripts/rclone-getter.js
@@ -26,8 +36,9 @@ runs:
       with:
         rclone_config: ${{ env.B64_RCLONE }}
 
-    # SETTER (reads on-disk rclone.conf, sends to your setter webhook)
+    # SETTER (reads ~/.config/rclone/rclone.conf and POSTs it)
     - name: Send rclone.conf via JS (POST, masked)
+      shell: bash
       env:
         RCLONE_SETTER_URL: ${{ env.rclone_setter_url }}
       run: node scripts/rclone-setter.js

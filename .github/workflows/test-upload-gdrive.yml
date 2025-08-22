@@ -6,8 +6,13 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      - uses: subekti404dev/test-actions/.github/actions/setup-rclone@main
-
+      # - uses: subekti404dev/test-actions/.github/actions/setup-rclone@main
+      - name: Setup RClone (composite)
+        uses: ./.github/actions/setup-rclone
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          
       - name: Create sample file and upload
         run: |
           mkdir -p "$GITHUB_WORKSPACE/tmp/data"
