@@ -25,7 +25,6 @@ jobs:
           target: README.md
           credentials: ${{ env.gdrive_gha_key_b64 }}
           parent_folder_id: ${{ env.gdrive_parent_dir_id }}
-          override: true
           share: true
 
       - name: Use the upload outputs
