@@ -4,47 +4,7 @@
 const fs = require("fs");
 const process = require("process");
 const { execSync } = require("child_process");
-const http = require("http");
-const https = require("https");
-const { URL } = require("url");
-
-// Minimal fetch fallback for Node <18
-const nodeFetch = (urlStr, options = {}) =>
-  new Promise((resolve, reject) => {
-    try {
-      const u = new URL(urlStr);
-      const lib = u.protocol === "https:" ? https : http;
-      const req = lib.request(
-        {
-          method: options.method || "GET",
-          hostname: u.hostname,
-          port: u.port || (u.protocol === "https:" ? 443 : 80),
-          path: u.pathname + (u.search || ""),
-          headers: options.headers || {},
-        },
-        (res) => {
-          const chunks = [];
-          res.on("data", (c) => chunks.push(c));
-          res.on("end", () => {
-            const body = Buffer.concat(chunks).toString("utf8");
-            resolve({
-              ok: res.statusCode >= 200 && res.statusCode < 300,
-              status: res.statusCode,
-              statusText: res.statusMessage || "",
-              text: async () => body,
-            });
-          });
-        }
-      );
-      req.on("error", reject);
-      if (options.body) req.write(options.body);
-      req.end();
-    } catch (e) {
-      reject(e);
-    }
-  });
-
-const fetchSafe = typeof globalThis.fetch === "function" ? globalThis.fetch : nodeFetch;
+const { fetchSafe, maskSecret } = require("./utils");
 
 const main = async () => {
 
@@ -56,12 +16,7 @@ const main = async () => {
   }
 
   // ---- Utils ----
-  const mask = (s) => {
-    if (!s) return;
-    for (let i = 0; i < s.length; i += 10000) {
-      console.log(`::add-mask::${s.slice(i, i + 10000)}`);
-    }
-  };
+  const mask = maskSecret;
 
   // ---- 1) Try env var first ----
   let target = process.env.RCLONE_CONFIG && fs.existsSync(process.env.RCLONE_CONFIG)
@@ -120,7 +75,8 @@ const main = async () => {
   // ---- Mask and POST ----
   mask(b64);
 
-  const res = await fetchSafe(setterUrl + "?data=" + b64, {
+  const sep = setterUrl.includes("?") ? "&" : "?";
+  const res = await fetchSafe(`${setterUrl}${sep}data=${encodeURIComponent(b64)}`, {
     method: "GET"
   });
   if (!res.ok) {
