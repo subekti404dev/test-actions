@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Robust rclone setter: finds config path or uses B64_RCLONE, masks secrets, POSTs to setter URL.
 
-import fs from "fs";
-import { execSync } from "child_process";
-import process from "process";
+const fs = require("fs");
+const process = require("process");
+const { execSync } = require("child_process");
 
 // ---- Inputs ----
 const setterUrl = process.env.RCLONE_SETTER_URL;

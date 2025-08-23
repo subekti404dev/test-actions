@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import fs from "fs";
-import process from "process";
+const fs = require("fs");
+const process = require("process");
 
 // Inputs
 const url = process.env.RCLONE_GETTER_URL;
