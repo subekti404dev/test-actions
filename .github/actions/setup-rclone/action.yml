@@ -39,7 +39,8 @@ runs:
       env:
         rclone_config: ${{ env.B64_RCLONE }}
       run: |
-        echo "$rclone_config" | base64 -d > ~/.config/rclone/rclone.conf
+        rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
+        echo "$rclone_config" | base64 -d > "$rclone_conf_path"
         rclone ls gdrive1:GHA/
 
     # SETTER (reads ~/.config/rclone/rclone.conf and POSTs it)
