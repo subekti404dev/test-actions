@@ -1,5 +1,10 @@
 name: Upload lixstream
 description: "upload file into lixstream"
+    # action.yml
+outputs:
+  FILE_SHARE_LINK:
+    description: 'Description of my output'
+    value: ${{ steps.upload_callback.outputs.FILE_SHARE_LINK }}
 inputs:
   env_url:
     description: "Protected JSON URL"
