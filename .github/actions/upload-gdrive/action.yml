@@ -1,0 +1,90 @@
+name: Upload GDrive
+description: "upload file into GDrive"
+
+inputs:
+  env_url:
+    description: "Protected JSON URL"
+    required: true
+  env_token:
+    description: "Bearer or token for the protected JSON"
+    required: true
+  file_path:
+    description: "Filepath of the file that you want to upload"
+    required: true
+
+outputs:
+  file_id:
+    description: "Drive file ID after upload"
+    value: ${{ steps.rclone_copy.outputs.file_id }}
+  filename:
+    description: "Basename of uploaded file"
+    value: ${{ steps.rclone_copy.outputs.filename }}
+  query:
+    description: "Filename without extension"
+    value: ${{ steps.rclone_copy.outputs.query }}
+  imdb:
+    description: "IMDb id prefix"
+    value: ${{ steps.rclone_copy.outputs.imdb }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup RClone (composite)
+      uses: subekti404dev/test-actions/.github/actions/setup-rclone@main
+      with:
+        env_url: ${{ inputs.env_url }}
+        env_token: ${{ inputs.env_token }}
+
+    - name: Rclone copy by IMDb folder
+      id: rclone_copy
+      shell: sh
+      env:
+        video_file_path: ${{ inputs.file_path }}
+        dest_remote: gdrive1
+        dest_root: GHA
+      run: |
+        set -eu
+
+        # Derive variables
+        filename=$(basename "$video_file_path")
+        query="${filename%.*}"        # filename without extension
+        imdb="${query%%:*}"           # take part before first colon
+
+        echo "filename: $filename"
+        echo "query:    $query"
+        echo "imdb:     $imdb"
+
+        # Ensure destination folder exists (safe if it already exists)
+        rclone mkdir "${dest_remote}:${dest_root}/${imdb}"
+
+        # Upload exact path
+        rclone copy --drive-shared-with-me \
+          "$video_file_path" \
+          "${dest_remote}:${dest_root}/${imdb}/${filename}"
+
+        # Obtain Drive file ID
+        json="$(rclone lsjson "${dest_remote}:${dest_root}/${imdb}/${filename}" || true)"
+        if command -v jq >/dev/null 2>&1; then
+          file_id="$(printf '%s' "$json" | jq -r '.[0].ID // empty')"
+        else
+          # basic fallback parser if jq is unavailable
+          file_id="$(printf '%s' "$json" | sed -n 's/.*"ID":[[:space:]]*"\([^"]\+\)".*/\1/p' | head -n1)"
+        fi
+
+        if [ -z "${file_id:-}" ]; then
+          echo "Failed to determine file_id for ${filename}" >&2
+          echo "lsjson output was: $json" >&2
+          exit 1
+        fi
+
+        # Export outputs
+        {
+          echo "filename=$filename"
+          echo "query=$query"
+          echo "imdb=$imdb"
+          echo "file_id=$file_id"
+        } >> "$GITHUB_OUTPUT"
+
+   

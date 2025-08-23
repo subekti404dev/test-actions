@@ -153,6 +153,14 @@ jobs:
           env_url: ${{ secrets.ENV_URL }}
           env_token: ${{ secrets.ENV_TOKEN }}
           file_path: ${{ env.VIDEO_FILE }}
+
+      - name: Upload file to gdrive (composite)
+        id: upload_gdrive
+        uses: subekti404dev/test-actions/.github/actions/upload-gdrive@main
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          file_path: ${{ env.VIDEO_FILE }}
           
 
       - name: Execute on_finished command
@@ -161,8 +169,10 @@ jobs:
         env:
           FILENAME: ${{ github.event.inputs.filename || '' }}
           FILE_SHARE_LINK: ${{ steps.upload_lixstream.outputs.file_share_link || '' }}
+          GDRIVE_FILE_ID: ${{ steps.upload_gdrive.outputs.file_id || '' }}
         run: |
           set -eu
           echo "Executing custom on_finished command:"
+          echo "GDRIVE_FILE_ID: ${GDRIVE_FILE_ID}"
           echo "${{ github.event.inputs.on_finished }}"
           eval "${{ github.event.inputs.on_finished }}"
