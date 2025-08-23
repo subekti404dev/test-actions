@@ -35,6 +35,7 @@ runs:
         echo "rclone getter: stored B64_RCLONE to GITHUB_ENV (masked)."
 
     - name: Setup Rclone Config
+      shell: sh
       env:
         rclone_config: ${{ env.B64_RCLONE }}
       run: |
