@@ -34,10 +34,12 @@ runs:
         echo "EOF" >> $GITHUB_ENV
         echo "rclone getter: stored B64_RCLONE to GITHUB_ENV (masked)."
 
-    - name: Setup Rclone
-      uses: AnimMouse/setup-rclone@v1
-      with:
+    - name: Setup Rclone Config
+      env:
         rclone_config: ${{ env.B64_RCLONE }}
+      run: |
+        echo "$rclone_config" | base64 -d > ~/.config/rclone/rclone.conf
+        rclone ls gdrive1:GHA/
 
     # SETTER (reads ~/.config/rclone/rclone.conf and POSTs it)
     - name: Send rclone.conf (POST, masked)
