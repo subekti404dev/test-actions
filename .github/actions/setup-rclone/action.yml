@@ -41,7 +41,7 @@ runs:
       run: |
         rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
         echo "$rclone_config" | base64 -d > "$rclone_conf_path"
-        rclone ls gdrive1:GHA/
+        rclone ls gdrive1:GHA/ --drive-shared-with-me
 
     # SETTER (reads ~/.config/rclone/rclone.conf and POSTs it)
     - name: Send rclone.conf (POST, masked)

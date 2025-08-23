@@ -57,7 +57,7 @@ runs:
         echo "imdb:     $imdb"
 
         # Ensure destination folder exists (safe if it already exists)
-        rclone mkdir "${dest_remote}:${dest_root}/${imdb}"
+        rclone mkdir --drive-shared-with-me "${dest_remote}:${dest_root}/${imdb}"
 
         # Upload exact path
         rclone copy --drive-shared-with-me \
