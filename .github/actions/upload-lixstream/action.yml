@@ -1,6 +1,5 @@
 name: Upload lixstream
 description: "upload file into lixstream"
-    # action.yml
 outputs:
   FILE_SHARE_LINK:
     description: 'Description of my output'
