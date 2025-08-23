@@ -160,7 +160,7 @@ jobs:
         shell: sh
         env:
           FILENAME: ${{ github.event.inputs.filename || '' }}
-          FILE_SHARE_LINK: ${{ steps.upload_lixstream.outputs.FILE_SHARE_LINK || '' }}
+          FILE_SHARE_LINK: ${{ steps.upload_lixstream.outputs.file_share_link || '' }}
         run: |
           set -eu
           echo "Executing custom on_finished command:"

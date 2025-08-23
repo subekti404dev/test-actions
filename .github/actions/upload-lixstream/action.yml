@@ -1,7 +1,7 @@
 name: Upload lixstream
 description: "upload file into lixstream"
 outputs:
-  FILE_SHARE_LINK:
+  file_share_link:
     description: 'Description of my output'
     value: ${{ steps.upload_callback.outputs.FILE_SHARE_LINK }}
 inputs:
