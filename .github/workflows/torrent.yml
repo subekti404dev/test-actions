@@ -146,13 +146,13 @@ jobs:
           # Update env for subsequent steps
           echo "VIDEO_FILE=$NEW_PATH" >> "$GITHUB_ENV"
 
-      - name: Upload file to lixstream (composite)
-        id: upload_lixstream
-        uses: subekti404dev/test-actions/.github/actions/upload-lixstream@main
-        with:
-          env_url: ${{ secrets.ENV_URL }}
-          env_token: ${{ secrets.ENV_TOKEN }}
-          file_path: ${{ env.VIDEO_FILE }}
+      # - name: Upload file to lixstream (composite)
+      #   id: upload_lixstream
+      #   uses: subekti404dev/test-actions/.github/actions/upload-lixstream@main
+      #   with:
+      #     env_url: ${{ secrets.ENV_URL }}
+      #     env_token: ${{ secrets.ENV_TOKEN }}
+      #     file_path: ${{ env.VIDEO_FILE }}
 
       - name: Upload file to gdrive (composite)
         id: upload_gdrive
