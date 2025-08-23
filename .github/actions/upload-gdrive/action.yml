@@ -62,15 +62,23 @@ runs:
         # Upload exact path
         rclone copy --drive-shared-with-me \
           "$video_file_path" \
-          "${dest_remote}:${dest_root}/${imdb}/${filename}"
+          "${dest_remote}:${dest_root}/${imdb}"
 
-        # Obtain Drive file ID
-        json="$(rclone lsjson "${dest_remote}:${dest_root}/${imdb}/${filename}" || true)"
+        # Obtain Drive file ID by searching for the file in the destination directory.
+        # This is more robust than assuming a fixed path.
+        json_output=$(rclone lsjson --drive-shared-with-me -R "${dest_remote}:${dest_root}/${imdb}" | grep -F "\"Name\":\"${filename}\"" || echo "")
+        
+        if [ -z "$json_output" ]; then
+          echo "::error::Failed to find file '${filename}' in remote '${dest_remote}:${dest_root}/${imdb}' after upload."
+          rclone ls -R "${dest_remote}:${dest_root}/${imdb}"
+          exit 1
+        fi
+
         if command -v jq >/dev/null 2>&1; then
-          file_id="$(printf '%s' "$json" | jq -r '.[0].ID // empty')"
+          file_id=$(echo "$json_output" | jq -r '.ID')
         else
-          # basic fallback parser if jq is unavailable
-          file_id="$(printf '%s' "$json" | sed -n 's/.*"ID":[[:space:]]*"\([^"]\+\)".*/\1/p' | head -n1)"
+          # Basic fallback parser if jq is unavailable
+          file_id=$(echo "$json_output" | sed -n 's/.*"ID":"\([^"]*\)".*/\1/p')
         fi
 
         if [ -z "${file_id:-}" ]; then
