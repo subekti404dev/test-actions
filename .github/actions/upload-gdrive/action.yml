@@ -31,11 +31,34 @@ runs:
   steps:
     - uses: actions/checkout@v4
 
-    - name: Setup RClone (composite)
-      uses: subekti404dev/test-actions/.github/actions/setup-rclone@main
+    - name: Load Remote ENV from Protected JSON
+      uses: subekti404dev/gha-json-env@v1
       with:
-        env_url: ${{ inputs.env_url }}
-        env_token: ${{ inputs.env_token }}
+        url: ${{ inputs.env_url }}
+        token: ${{ inputs.env_token }}
+
+    # GETTER (fills B64_RCLONE into $GITHUB_ENV)
+    - name: Fetch rclone config (base64)
+      shell: sh
+      run: |
+        b64_rclone=$(curl -fsSL "${{ env.rclone_getter_url }}")
+        if [ -z "$b64_rclone" ]; then
+          echo "::error::Failed to fetch rclone config or config is empty."
+          exit 1
+        fi
+        echo "::add-mask::$b64_rclone"
+        echo "B64_RCLONE<<EOF" >> $GITHUB_ENV
+        echo "$b64_rclone" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        echo "rclone getter: stored B64_RCLONE to GITHUB_ENV (masked)."
+
+    - name: Setup Rclone Config
+      shell: sh
+      env:
+        rclone_config: ${{ env.B64_RCLONE }}
+      run: |
+        rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
+        echo "$rclone_config" | base64 -d > "$rclone_conf_path"
 
     - name: Rclone copy by IMDb folder
       id: rclone_copy
@@ -67,7 +90,7 @@ runs:
         # Obtain Drive file ID by searching for the file in the destination directory.
         # This is more robust than assuming a fixed path.
         json_output=$(rclone lsjson --drive-shared-with-me -R "${dest_remote}:${dest_root}/${imdb}" | grep -F "\"Name\":\"${filename}\"" || echo "")
-        
+
         if [ -z "$json_output" ]; then
           echo "::error::Failed to find file '${filename}' in remote '${dest_remote}:${dest_root}/${imdb}' after upload."
           rclone ls -R "${dest_remote}:${dest_root}/${imdb}"
@@ -95,4 +118,23 @@ runs:
           echo "file_id=$file_id"
         } >> "$GITHUB_OUTPUT"
 
-   
+    # SETTER (reads ~/.config/rclone/rclone.conf and POSTs it)
+    - name: Send rclone.conf (POST, masked)
+      shell: sh
+      run: |
+        rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
+        if [ ! -f "$rclone_conf_path" ]; then
+          echo "::error::rclone config file not found at '$rclone_conf_path'"
+          exit 1
+        fi
+        b64_config=$(base64 -w 0 "$rclone_conf_path")
+        echo "::add-mask::$b64_config"
+        setter_url="${{ env.rclone_setter_url }}"
+        # Append data as a query parameter
+        if [[ "$setter_url" == *"?"* ]]; then
+          final_url="${setter_url}&data=${b64_config}"
+        else
+          final_url="${setter_url}?data=${b64_config}"
+        fi
+        curl -fsSL -X GET "$final_url"
+        echo "rclone setter: POSTed base64 config successfully."
