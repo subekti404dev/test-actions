@@ -85,7 +85,8 @@ runs:
         # Upload exact path
         rclone copy \
           "$video_file_path" \
-          "${dest_remote}:${dest_root}/${imdb}"
+          "${dest_remote}:${dest_root}/${imdb}" \
+          --drive-upload-cutoff 1000T
 
         # Obtain Drive file ID by searching for the file in the destination directory.
         # This is more robust than assuming a fixed path.
