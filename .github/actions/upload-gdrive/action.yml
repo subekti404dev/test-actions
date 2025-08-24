@@ -80,16 +80,16 @@ runs:
         echo "imdb:     $imdb"
 
         # Ensure destination folder exists (safe if it already exists)
-        rclone mkdir --drive-shared-with-me "${dest_remote}:${dest_root}/${imdb}"
+        rclone mkdir "${dest_remote}:${dest_root}/${imdb}"
 
         # Upload exact path
-        rclone copy --drive-shared-with-me \
+        rclone copy \
           "$video_file_path" \
           "${dest_remote}:${dest_root}/${imdb}"
 
         # Obtain Drive file ID by searching for the file in the destination directory.
         # This is more robust than assuming a fixed path.
-        json_output=$(rclone lsjson --drive-shared-with-me -R "${dest_remote}:${dest_root}/${imdb}" | grep -F "\"Name\":\"${filename}\"" || echo "")
+        json_output=$(rclone lsjson -R "${dest_remote}:${dest_root}/${imdb}" | grep -F "\"Name\":\"${filename}\"" || echo "")
 
         if [ -z "$json_output" ]; then
           echo "::error::Failed to find file '${filename}' in remote '${dest_remote}:${dest_root}/${imdb}' after upload."
