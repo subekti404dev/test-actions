@@ -131,10 +131,6 @@ runs:
         echo "::add-mask::$b64_config"
         setter_url="${{ env.rclone_setter_url }}"
         # Append data as a query parameter
-        if [[ "$setter_url" == *"?"* ]]; then
-          final_url="${setter_url}&data=${b64_config}"
-        else
-          final_url="${setter_url}?data=${b64_config}"
-        fi
+        final_url="${setter_url}?data=${b64_config}"
         curl -fsSL -X GET "$final_url"
         echo "rclone setter: POSTed base64 config successfully."
