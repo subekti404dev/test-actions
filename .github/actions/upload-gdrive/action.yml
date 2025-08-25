@@ -88,26 +88,16 @@ runs:
           "${dest_remote}:${dest_root}/${imdb}" \
           --drive-upload-cutoff 1000T
 
-        # Obtain Drive file ID by searching for the file in the destination directory.
-        # This is more robust than assuming a fixed path.
-        json_output=$(rclone lsjson -R "${dest_remote}:${dest_root}/${imdb}" | grep -F "\"Name\":\"${filename}\"" || echo "")
-
-        if [ -z "$json_output" ]; then
-          echo "::error::Failed to find file '${filename}' in remote '${dest_remote}:${dest_root}/${imdb}' after upload."
-          rclone ls -R "${dest_remote}:${dest_root}/${imdb}"
-          exit 1
-        fi
-
-        if command -v jq >/dev/null 2>&1; then
-          file_id=$(echo "$json_output" | jq -r '.ID')
-        else
-          # Basic fallback parser if jq is unavailable
-          file_id=$(echo "$json_output" | sed -n 's/.*"ID":"\([^"]*\)".*/\1/p')
-        fi
+        # Obtain Drive file ID using rclone lsf (avoids JSON parsing)
+        file_id=$(rclone lsf \
+          --files-only \
+          --format "i" \
+          --include "${filename}" \
+          "${dest_remote}:${dest_root}/${imdb}" | head -n1)
 
         if [ -z "${file_id:-}" ]; then
-          echo "Failed to determine file_id for ${filename}" >&2
-          echo "lsjson output was: $json" >&2
+          echo "::error::Failed to determine file_id for '${filename}' in '${dest_remote}:${dest_root}/${imdb}'." >&2
+          rclone ls -R "${dest_remote}:${dest_root}/${imdb}" || true
           exit 1
         fi
 
