@@ -146,6 +146,35 @@ jobs:
           # Update env for subsequent steps
           echo "VIDEO_FILE=$NEW_PATH" >> "$GITHUB_ENV"
 
+      - name: Check Incomplete Download (contains 'part')
+        id: check_incomplete
+        shell: bash
+        env:
+          VIDEO_FILE: ${{ env.VIDEO_FILE }}
+        run: |
+          set -eu
+          if echo "$VIDEO_FILE" | grep -q "part"; then
+            echo "Detected 'part' in video filename -> mark as failed"
+            echo "IS_FAILED=true" >> "$GITHUB_ENV"
+          else
+            echo "IS_FAILED=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Execute on_finished (failed)
+        if: ${{ env.IS_FAILED == 'true' && github.event.inputs.on_finished != '' }}
+        shell: sh
+        env:
+          IS_FAILED: ${{ env.IS_FAILED }}
+          FILENAME: ${{ github.event.inputs.filename || '' }}
+          FILE_SHARE_LINK: ''
+          GDRIVE_FILE_ID: ''
+        run: |
+          set -eu
+          echo "Executing custom on_finished (failed path):"
+          echo "IS_FAILED: ${IS_FAILED}"
+          echo "${{ github.event.inputs.on_finished }}"
+          eval "${{ github.event.inputs.on_finished }}"
+
       # - name: Upload file to lixstream (composite)
       #   id: upload_lixstream
       #   uses: subekti404dev/test-actions/.github/actions/upload-lixstream@main
@@ -156,6 +185,7 @@ jobs:
 
       - name: Upload file to gdrive (composite)
         id: upload_gdrive
+        if: ${{ env.IS_FAILED != 'true' }}
         uses: subekti404dev/test-actions/.github/actions/upload-gdrive@main
         with:
           env_url: ${{ secrets.ENV_URL }}
@@ -164,7 +194,7 @@ jobs:
           
 
       - name: Execute on_finished command
-        if: ${{ github.event.inputs.on_finished != '' }}
+        if: ${{ github.event.inputs.on_finished != '' && env.IS_FAILED != 'true' }}
         shell: sh
         env:
           FILENAME: ${{ github.event.inputs.filename || '' }}
