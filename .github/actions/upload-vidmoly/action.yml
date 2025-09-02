@@ -1,0 +1,57 @@
+name: Upload Vidmoly
+description: "Upload file to Vidmoly transit"
+
+inputs:
+  env_url:
+    description: "Protected JSON URL"
+    required: true
+  env_token:
+    description: "Bearer or token for the protected JSON"
+    required: true
+  file_path:
+    description: "Filepath of the file that you want to upload"
+    required: true
+
+outputs:
+  progress_id:
+    description: "Progress ID used for upload"
+    value: ${{ steps.vidmoly_upload.outputs.progress_id }}
+  upload_status:
+    description: "HTTP status of upload request"
+    value: ${{ steps.vidmoly_upload.outputs.upload_status }}
+  upload_url:
+    description: "Transit URL used for upload"
+    value: ${{ steps.vidmoly_upload.outputs.upload_url }}
+  file_code:
+    description: "File code returned by Vidmoly (fn)"
+    value: ${{ steps.vidmoly_upload.outputs.file_code }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+
+    - name: Load Remote ENV from Protected JSON
+      uses: subekti404dev/gha-json-env@v1
+      with:
+        url: ${{ inputs.env_url }}
+        token: ${{ inputs.env_token }}
+
+    - name: Upload to Vidmoly
+      id: vidmoly_upload
+      shell: sh
+      env:
+        VIDMOLY_USERNAME: ${{ env.vidmoly_username }}
+        VIDMOLY_PASSWORD: ${{ env.vidmoly_password }}
+        FILE_PATH: ${{ inputs.file_path }}
+      run: |
+        set -eu
+        if [ -z "${VIDMOLY_USERNAME:-}" ] || [ -z "${VIDMOLY_PASSWORD:-}" ]; then
+          echo "::error::Missing vidmoly credentials in remote env (vidmoly_username / vidmoly_password)"
+          exit 1
+        fi
+        if [ -z "${FILE_PATH:-}" ]; then
+          echo "::error::file_path input is required"
+          exit 1
+        fi
+        node scripts/vidmoly.js "${VIDMOLY_USERNAME}" "${VIDMOLY_PASSWORD}" "${FILE_PATH}"
