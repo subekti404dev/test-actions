@@ -114,6 +114,8 @@ async function main() {
   }
 
   try {
+    // Normalize and sanitize file path
+    filePath = String(filePath).replace(/^file:\/\//, "").trim();
     // Mask secrets in GitHub Actions logs
     console.log(`::add-mask::${username}`);
     console.log(`::add-mask::${password}`);
@@ -178,7 +180,7 @@ async function uploadTransit({ xfsts, filePath }, opts = {}) {
   const fsPromises = require("fs/promises");
   const path = require("path");
 
-  const absPath = path.resolve(filePath);
+  const absPath = path.resolve(String(filePath));
   const stat = await fsPromises.stat(absPath).catch(() => null);
   if (!stat || !stat.isFile()) {
     throw new Error(`File not found or not a file: ${absPath}`);
