@@ -180,7 +180,7 @@ async function uploadTransit({ xfsts, filePath }, opts = {}) {
   const fsPromises = require("fs/promises");
   const path = require("path");
 
-  const absPath = path.resolve(String(filePath));
+  const absPath = String(filePath);
   const stat = await fsPromises.stat(absPath).catch(() => null);
   if (!stat || !stat.isFile()) {
     throw new Error(`File not found or not a file: ${absPath}`);
