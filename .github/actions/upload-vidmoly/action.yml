@@ -31,29 +31,6 @@ runs:
   steps:
     - uses: actions/checkout@v4
 
-    - name: Verify File Path
-      shell: sh
-      env:
-        FILE_PATH: ${{ inputs.file_path }}
-      run: |
-        set -eu
-        FP="${FILE_PATH:-}"
-        # Strip file:// prefix and trim trailing whitespace/newlines
-        FP="$(printf '%s' "$FP" | sed -e 's#^file://##' -e 's/[[:space:]]*$//')"
-        echo "Normalized FILE_PATH: $FP"
-        if [ ! -f "$FP" ]; then
-          echo "::error::File not found: $FP"
-          echo "pwd: $(pwd)"
-          echo "Workspace contents:"
-          ls -la || true
-          if [ -d /data ]; then
-            echo "Listing /data:"
-            ls -la /data || true
-          fi
-          exit 1
-        fi
-        echo "FILE_PATH=$FP" >> "$GITHUB_ENV"
-
     - name: Load Remote ENV from Protected JSON
       uses: subekti404dev/gha-json-env@v1
       with:
