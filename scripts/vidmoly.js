@@ -15,9 +15,10 @@
 // - Does not print response body unless a non-2xx status occurs.
 
 /* eslint-env node */
-/* global fetch */
 
 const fs = require("fs");
+const axios = require("axios");
+const FormData = require("form-data");
 
 function parseSetCookieHeaders(setCookieHeaders) {
   // setCookieHeaders: string[] of full Set-Cookie header lines
@@ -59,25 +60,23 @@ async function loginVidmoly({ username, password }) {
     "Referer": "https://vidmoly.me/",
   };
 
-  // Important: use manual redirect so we can read Set-Cookie on the 302 response
-  const res = await fetch(url, {
-    method: "POST",
+  // Use manual redirect so we can read Set-Cookie on the 302 response
+  const res = await axios.post(url, params.toString(), {
     headers,
-    body: params.toString(),
-    redirect: "manual",
+    maxRedirects: 0,
+    validateStatus: () => true, // we'll handle non-2xx
+    responseType: "text",
+    transformResponse: [(d) => d],
   });
 
-  // Gather all Set-Cookie headers (undici exposes getSetCookie)
+  // Gather all Set-Cookie headers
   let setCookies = [];
-  if (typeof res.headers.getSetCookie === "function") {
-    setCookies = res.headers.getSetCookie();
-  } else {
-    const single = res.headers.get("set-cookie");
-    if (single) setCookies = [single];
-  }
+  const sc = res.headers["set-cookie"];
+  if (Array.isArray(sc)) setCookies = sc;
+  else if (typeof sc === "string") setCookies = [sc];
 
   if (!setCookies || setCookies.length === 0) {
-    const text = await res.text().catch(() => "");
+    const text = typeof res.data === "string" ? res.data : "";
     const snippet = text ? text.slice(0, 300) : "";
     throw new Error(`No Set-Cookie headers found (status ${res.status}). Body: ${snippet}`);
   }
@@ -217,13 +216,18 @@ async function uploadTransit({ xfsts, filePath }, opts = {}) {
   form.append("tos", opts.tos ?? "1");
   form.append("submit_btn", opts.submitBtn ?? " Upload! ");
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: form,
+  const formHeaders = form.getHeaders();
+  const axiosHeaders = { ...headers, ...formHeaders };
+
+  const res = await axios.post(url, form, {
+    headers: axiosHeaders,
+    maxBodyLength: Infinity,
+    responseType: "text",
+    transformResponse: [(d) => d],
+    validateStatus: () => true,
   });
 
-  const body = await res.text().catch(() => "");
+  const body = typeof res.data === "string" ? res.data : "";
   return { status: res.status, url, progressId, body };
 }
 
