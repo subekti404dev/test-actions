@@ -181,10 +181,6 @@ async function uploadTransit({ xfsts, filePath }, opts = {}) {
   const path = require("path");
 
   const absPath = String(filePath);
-  const stat = await fsPromises.stat(absPath).catch(() => null);
-  if (!stat || !stat.isFile()) {
-    throw new Error(`File not found or not a file: ${absPath}`);
-  }
 
   const progressId = opts.progressId || randomProgressId(12);
   const baseUrl = opts.transitUrl || "https://upload-transit-eu-2x.vmrange.lat/upload/01";
