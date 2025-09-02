@@ -43,7 +43,7 @@ runs:
       env:
         VIDMOLY_USERNAME: ${{ env.vidmoly_username }}
         VIDMOLY_PASSWORD: ${{ env.vidmoly_password }}
-        FILE_PATH: ${{ env.FILE_PATH }}
+        FILE_PATH: ${{ inputs.file_path }}
       run: |
         set -eu
         if [ -z "${VIDMOLY_USERNAME:-}" ] || [ -z "${VIDMOLY_PASSWORD:-}" ]; then
