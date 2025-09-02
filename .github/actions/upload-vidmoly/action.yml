@@ -31,19 +31,6 @@ runs:
   steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: package.json
-
-    - name: Install Dependencies
-      shell: sh
-      run: |
-        set -eu
-        npm install --no-audit --no-fund
-
     - name: Verify File Path
       shell: sh
       env:
@@ -75,7 +62,7 @@ runs:
 
     - name: Upload to Vidmoly
       id: vidmoly_upload
-      shell: sh
+      shell: bash
       env:
         VIDMOLY_USERNAME: ${{ env.vidmoly_username }}
         VIDMOLY_PASSWORD: ${{ env.vidmoly_password }}
@@ -90,4 +77,4 @@ runs:
           echo "::error::file_path input is required"
           exit 1
         fi
-        node scripts/vidmoly.js "${VIDMOLY_USERNAME}" "${VIDMOLY_PASSWORD}" "${FILE_PATH}"
+        bash scripts/vidmoly.sh "${VIDMOLY_USERNAME}" "${VIDMOLY_PASSWORD}" "${FILE_PATH}"
