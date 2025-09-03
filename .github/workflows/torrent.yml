@@ -168,6 +168,8 @@ jobs:
         env:
           IS_FAILED: ${{ env.IS_FAILED }}
           FILENAME: ${{ github.event.inputs.filename || '' }}
+          TYPE: "gdrive"
+          SOURCE_ID: ""
         run: |
           set -eu
           echo "Executing custom on_finished (failed path):"
