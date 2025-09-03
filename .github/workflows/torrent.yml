@@ -17,6 +17,8 @@ on:
 jobs:
   download:
     runs-on: ubuntu-latest
+    outputs:
+      drive_filepath: ${{ steps.upload_gdrive.outputs.remote_filepath }}
     container: subekti13/torrent-downloader-v2:ubuntu
     steps:
       - uses: actions/checkout@v4
@@ -175,52 +177,108 @@ jobs:
           echo "${{ github.event.inputs.on_finished }}"
           eval "${{ github.event.inputs.on_finished }}"
 
-      # - name: Upload file to lixstream (composite)
-      #   id: upload_lixstream
-      #   uses: subekti404dev/test-actions/.github/actions/upload-lixstream@main
-      #   with:
-      #     env_url: ${{ secrets.ENV_URL }}
-      #     env_token: ${{ secrets.ENV_TOKEN }}
-      #     file_path: ${{ env.VIDEO_FILE }}
-
-      # - name: Upload file to gdrive (composite)
-      #   id: upload_gdrive
-      #   if: ${{ env.IS_FAILED != 'true' }}
-      #   uses: subekti404dev/test-actions/.github/actions/upload-gdrive@main
-      #   with:
-      #     env_url: ${{ secrets.ENV_URL }}
-      #     env_token: ${{ secrets.ENV_TOKEN }}
-      #     file_path: ${{ env.VIDEO_FILE }}
-
-      - name: Upload file to tfshx (composite)
-        id: upload_tfshx
+      - name: Upload file to gdrive (composite)
+        id: upload_gdrive
         if: ${{ env.IS_FAILED != 'true' }}
-        uses: subekti404dev/test-actions/.github/actions/upload-tfshx@main
-        with:
-          base_url: ${{ env.tfshx_base_url }}
-          file_path: ${{ env.VIDEO_FILE }}
-
-      - run: echo "${{ steps.upload_tfshx.outputs.uploaded_url }}"
-            
-      - name: Upload file to vidmoly (composite)
-        id: upload_vidmoly
-        if: ${{ env.IS_FAILED != 'true' }}
-        uses: subekti404dev/test-actions/.github/actions/upload-vidmoly@main
+        uses: subekti404dev/test-actions/.github/actions/upload-gdrive@main
         with:
           env_url: ${{ secrets.ENV_URL }}
           env_token: ${{ secrets.ENV_TOKEN }}
           file_path: ${{ env.VIDEO_FILE }}
+  
 
       - name: Execute on_finished command
         if: ${{ github.event.inputs.on_finished != '' && env.IS_FAILED != 'true' }}
         shell: sh
         env:
+          TYPE: "gdrive"
           FILENAME: ${{ github.event.inputs.filename || '' }}
-          FILE_SHARE_LINK: ${{ steps.upload_lixstream.outputs.file_share_link || '' }}
-          GDRIVE_FILE_ID: ${{ steps.upload_gdrive.outputs.file_id || steps.upload_vidmoly.outputs.file_code || '' }}
+          SOURCE_ID: ${{ steps.upload_gdrive.outputs.file_id }}
         run: |
           set -eu
           echo "Executing custom on_finished command:"
           echo "GDRIVE_FILE_ID: ${GDRIVE_FILE_ID}"
+          echo "${{ github.event.inputs.on_finished }}"
+          eval "${{ github.event.inputs.on_finished }}"
+
+  upload_lixstream:
+    runs-on: ubuntu-latest
+    needs: download
+    container: subekti13/torrent-downloader-v2:ubuntu
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Load Remote ENV from Protected JSON
+        uses: subekti404dev/gha-json-env@v1
+        with:
+          url: ${{ secrets.ENV_URL }}
+          token: ${{ secrets.ENV_TOKEN }}
+      - name: Dwnload file from gdrive (composite)
+        id: dl_gdrive
+        uses: subekti404dev/test-actions/.github/actions/download-gdrive@main
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          remote_filepath: ${{ needs.download.outputs.drive_filepath }}
+
+      - name: Upload file to lixstream (composite)
+        id: upload_lixstream
+        uses: subekti404dev/test-actions/.github/actions/upload-lixstream@main
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          file_path: ${{ steps.dl_gdrive.outputs.local_filepath }}
+
+      - name: Execute on_finished command
+        if: ${{ github.event.inputs.on_finished != '' && steps.upload_lixstream.outputs.file_share_link != '' }}
+        shell: sh
+        env:
+          TYPE: "lixstream"
+          FILENAME: ${{ github.event.inputs.filename || '' }}
+          SOURCE_ID: ${{ steps.upload_lixstream.outputs.file_share_link }}
+        run: |
+          set -eu
+          echo "Executing custom on_finished command:"
+          echo "${{ github.event.inputs.on_finished }}"
+          eval "${{ github.event.inputs.on_finished }}"
+
+  upload_vidmoly:
+    runs-on: ubuntu-latest
+    needs: download
+    container: subekti13/torrent-downloader-v2:ubuntu
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Load Remote ENV from Protected JSON
+        uses: subekti404dev/gha-json-env@v1
+        with:
+          url: ${{ secrets.ENV_URL }}
+          token: ${{ secrets.ENV_TOKEN }}
+      - name: Dwnload file from gdrive (composite)
+        id: dl_gdrive
+        uses: subekti404dev/test-actions/.github/actions/download-gdrive@main
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          remote_filepath: ${{ needs.download.outputs.drive_filepath }}
+
+      - name: Upload file to vidmoly (composite)
+        id: upload_vidmoly
+        uses: subekti404dev/test-actions/.github/actions/upload-vidmoly@main
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          file_path: ${{ steps.dl_gdrive.outputs.local_filepath }}
+  
+      - name: Execute on_finished command
+        if: ${{ github.event.inputs.on_finished != '' && steps.upload_vidmoly.outputs.file_code != '' }}
+        shell: sh
+        env:
+          TYPE: "vidmoly"
+          FILENAME: ${{ github.event.inputs.filename || '' }}
+          SOURCE_ID: ${{ steps.upload_vidmoly.outputs.file_code }}
+        run: |
+          set -eu
+          echo "Executing custom on_finished command:"
           echo "${{ github.event.inputs.on_finished }}"
           eval "${{ github.event.inputs.on_finished }}"
