@@ -27,6 +27,19 @@ runs:
       run: |
         set -euo pipefail
 
+        urlencode() {
+          local LC_ALL=C
+          local s="$1"
+          local i c
+          for ((i=0; i<${#s}; i++)); do
+            c=${s:i:1}
+            case "$c" in
+              [a-zA-Z0-9.~_-]) printf '%s' "$c" ;;
+              *) printf '%%%02X' "'${c}" ;;
+            esac
+          done
+        }
+
         src_path="${{ inputs.file_path }}"
         if [[ ! -f "$src_path" ]]; then
           echo "Error: file not found: $src_path" >&2
@@ -38,11 +51,13 @@ runs:
         fi
 
         base_url="${TFSH_BASE_URL:-https://tfshx.uripsub.dev}"
+        base_url_noslash="${base_url%/}"
         filename="$(basename -- "$src_path")"
-        dest_url="$base_url/$filename"
+        encoded_filename="$(urlencode "$filename")"
+        dest_url="$base_url_noslash/$encoded_filename"
 
         # Perform upload and capture URL response
-        if ! uploaded_url=$(curl -fsS \
+        if ! uploaded_url=$(curl -fsS --globoff \
           -H "Max-Days: 1" \
           --upload-file "$src_path" \
           "$dest_url"); then
@@ -51,7 +66,6 @@ runs:
         fi
 
         # Transform URL for tfsh retrieval path based on provided base URL
-        base_url_noslash="${base_url%/}"
         prefix="$base_url_noslash/"
         get_prefix="$base_url_noslash/get/"
         if [[ "$uploaded_url" == "$prefix"* && "$uploaded_url" != "$get_prefix"* ]]; then
