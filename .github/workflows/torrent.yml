@@ -191,6 +191,7 @@ jobs:
         if: ${{ github.event.inputs.on_finished != '' && env.IS_FAILED != 'true' }}
         shell: sh
         env:
+          IS_FAILED: "false"
           TYPE: "gdrive"
           FILENAME: ${{ github.event.inputs.filename || '' }}
           SOURCE_ID: ${{ steps.upload_gdrive.outputs.file_id }}
@@ -232,6 +233,7 @@ jobs:
         if: ${{ github.event.inputs.on_finished != '' && steps.upload_lixstream.outputs.file_share_link != '' }}
         shell: sh
         env:
+          IS_FAILED: "false"
           TYPE: "lixstream"
           FILENAME: ${{ github.event.inputs.filename || '' }}
           SOURCE_ID: ${{ steps.upload_lixstream.outputs.file_share_link }}
