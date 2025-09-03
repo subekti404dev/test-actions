@@ -191,7 +191,6 @@ jobs:
         if: ${{ github.event.inputs.on_finished != '' && env.IS_FAILED != 'true' }}
         shell: sh
         env:
-          IS_FAILED: "false"
           TYPE: "gdrive"
           FILENAME: ${{ github.event.inputs.filename || '' }}
           SOURCE_ID: ${{ steps.upload_gdrive.outputs.file_id }}
@@ -275,6 +274,7 @@ jobs:
         if: ${{ github.event.inputs.on_finished != '' && steps.upload_vidmoly.outputs.file_code != '' }}
         shell: sh
         env:
+          IS_FAILED: "false"
           TYPE: "vidmoly"
           FILENAME: ${{ github.event.inputs.filename || '' }}
           SOURCE_ID: ${{ steps.upload_vidmoly.outputs.file_code }}
