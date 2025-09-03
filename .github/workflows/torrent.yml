@@ -168,8 +168,6 @@ jobs:
         env:
           IS_FAILED: ${{ env.IS_FAILED }}
           FILENAME: ${{ github.event.inputs.filename || '' }}
-          FILE_SHARE_LINK: ''
-          GDRIVE_FILE_ID: ''
         run: |
           set -eu
           echo "Executing custom on_finished (failed path):"
@@ -197,7 +195,6 @@ jobs:
         run: |
           set -eu
           echo "Executing custom on_finished command:"
-          echo "GDRIVE_FILE_ID: ${GDRIVE_FILE_ID}"
           echo "${{ github.event.inputs.on_finished }}"
           eval "${{ github.event.inputs.on_finished }}"
 
