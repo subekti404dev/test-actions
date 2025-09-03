@@ -1,0 +1,124 @@
+name: Download GDrive
+description: "download file from GDrive using rclone"
+
+inputs:
+  env_url:
+    description: "Protected JSON URL"
+    required: true
+  env_token:
+    description: "Bearer or token for the protected JSON"
+    required: true
+  remote_filepath:
+    description: "Remote filepath in rclone format (e.g., gdrive1:GHA/IMDB123/title.mp4)"
+    required: true
+
+outputs:
+  local_filepath:
+    description: "Local path where the file is downloaded"
+    value: ${{ steps.rclone_download.outputs.local_filepath }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+
+    - name: Load Remote ENV from Protected JSON
+      uses: subekti404dev/gha-json-env@v1
+      with:
+        url: ${{ inputs.env_url }}
+        token: ${{ inputs.env_token }}
+
+    # GETTER (fills B64_RCLONE into $GITHUB_ENV)
+    - name: Fetch rclone config (base64)
+      shell: sh
+      run: |
+        set -eu
+        b64_rclone=$(curl -fsSL "${{ env.rclone_getter_url }}")
+        if [ -z "$b64_rclone" ]; then
+          echo "::error::Failed to fetch rclone config or config is empty."
+          exit 1
+        fi
+        echo "::add-mask::$b64_rclone"
+        {
+          echo "B64_RCLONE<<EOF"
+          echo "$b64_rclone"
+          echo "EOF"
+        } >> "$GITHUB_ENV"
+        echo "rclone getter: stored B64_RCLONE to GITHUB_ENV (masked)."
+
+    - name: Setup Rclone Config
+      shell: sh
+      env:
+        rclone_config: ${{ env.B64_RCLONE }}
+      run: |
+        set -eu
+        rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
+        echo "$rclone_config" | base64 -d > "$rclone_conf_path"
+
+    - name: Rclone download file
+      id: rclone_download
+      shell: sh
+      env:
+        remote_filepath: ${{ inputs.remote_filepath }}
+      run: |
+        set -eu
+
+        if [ -z "${remote_filepath:-}" ]; then
+          echo "::error::remote_filepath is required"
+          exit 1
+        fi
+
+        # Determine filename from remote path (strip remote name before colon)
+        remote_path_no_remote="${remote_filepath#*:}"
+        filename="$(basename "$remote_path_no_remote")"
+        if [ -z "$filename" ] || [ "$filename" = "$remote_path_no_remote" ]; then
+          # Fallback: attempt to list name via rclone lsf
+          filename="$(rclone lsf --files-only --format p "$remote_filepath" | tr -d '\n' | sed 's#.*/##')"
+        fi
+        if [ -z "$filename" ]; then
+          echo "::error::Unable to determine filename for '$remote_filepath'"
+          exit 1
+        fi
+
+        # Prefer RUNNER_TEMP when available; fallback to mktemp dir
+        if [ -n "${RUNNER_TEMP:-}" ]; then
+          dl_dir="$RUNNER_TEMP"
+        else
+          dl_dir="$(mktemp -d)"
+        fi
+        local_filepath="$dl_dir/$filename"
+
+        echo "Downloading to: $local_filepath"
+        # Use copyto to copy a single source to a single destination path
+        rclone copyto \
+          "$remote_filepath" \
+          "$local_filepath" \
+          --drive-chunk-size 64M \
+          --ignore-existing
+
+        if [ ! -s "$local_filepath" ]; then
+          echo "::error::Download appears to have failed; file missing or empty at '$local_filepath'"
+          # Show remote listing for diagnostics (non-fatal if listing fails)
+          rclone ls "$remote_filepath" 2>/dev/null || true
+          exit 1
+        fi
+
+        echo "local_filepath=$local_filepath" >> "$GITHUB_OUTPUT"
+
+    # SETTER (reads ~/.config/rclone/rclone.conf and POSTs it)
+    - name: Send rclone.conf (POST, masked)
+      shell: sh
+      run: |
+        set -eu
+        rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
+        if [ ! -f "$rclone_conf_path" ]; then
+          echo "::error::rclone config file not found at '$rclone_conf_path'"
+          exit 1
+        fi
+        b64_config=$(base64 -w 0 "$rclone_conf_path")
+        echo "::add-mask::$b64_config"
+        setter_url="${{ env.rclone_setter_url }}"
+        final_url="${setter_url}?data=${b64_config}"
+        curl -fsSL -X GET "$final_url"
+        echo "rclone setter: POSTed base64 config successfully."
+

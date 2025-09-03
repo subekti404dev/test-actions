@@ -25,6 +25,9 @@ outputs:
   imdb:
     description: "IMDb id prefix"
     value: ${{ steps.rclone_copy.outputs.imdb }}
+  remote_filepath:
+    description: "Rclone remote path to the uploaded file"
+    value: ${{ steps.rclone_copy.outputs.remote_filepath }}
 
 runs:
   using: "composite"
@@ -101,12 +104,16 @@ runs:
           exit 1
         fi
 
+        # Compose remote filepath for downstream actions
+        remote_filepath="${dest_remote}:${dest_root}/${imdb}/${filename}"
+
         # Export outputs
         {
           echo "filename=$filename"
           echo "query=$query"
           echo "imdb=$imdb"
           echo "file_id=$file_id"
+          echo "remote_filepath=$remote_filepath"
         } >> "$GITHUB_OUTPUT"
 
     # SETTER (reads ~/.config/rclone/rclone.conf and POSTs it)
