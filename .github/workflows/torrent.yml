@@ -191,7 +191,17 @@ jobs:
       #     env_url: ${{ secrets.ENV_URL }}
       #     env_token: ${{ secrets.ENV_TOKEN }}
       #     file_path: ${{ env.VIDEO_FILE }}
-          
+
+      - name: Upload file to tfshx (composite)
+        id: upload_tfshx
+        if: ${{ env.IS_FAILED != 'true' }}
+        uses: subekti404dev/test-actions/.github/actions/upload-tfshx@main
+        with:
+          base_url: ${{ env.tfshx_base_url }}
+          file_path: ${{ env.VIDEO_FILE }}
+
+      - run: echo "${{ steps.upload_tfshx.outputs.uploaded_url }}"
+            
       - name: Upload file to vidmoly (composite)
         id: upload_vidmoly
         if: ${{ env.IS_FAILED != 'true' }}

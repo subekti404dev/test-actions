@@ -1,0 +1,61 @@
+name: Upload TFSHx
+description: Upload a file to TFSH and output the retrieval URL
+
+inputs:
+  file_path:
+    description: Path to the file to upload
+    required: true
+  base_url:
+    description: Base URL of the TFSH instance (e.g., https://tfshx.uripsub.dev)
+    required: false
+    default: https://tfshx.uripsub.dev
+
+outputs:
+  uploaded_url:
+    description: Final TFSH URL with /get/ path
+    value: ${{ steps.upload.outputs.uploaded_url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Upload File
+      id: upload
+      shell: bash
+      env:
+        # Prefer input; defaults to public instance if unset.
+        TFSH_BASE_URL: ${{ inputs.base_url }}
+      run: |
+        set -euo pipefail
+
+        src_path="${{ inputs.file_path }}"
+        if [[ ! -f "$src_path" ]]; then
+          echo "Error: file not found: $src_path" >&2
+          exit 2
+        fi
+        if [[ ! -r "$src_path" ]]; then
+          echo "Error: file not readable: $src_path" >&2
+          exit 2
+        fi
+
+        base_url="${TFSH_BASE_URL:-https://tfshx.uripsub.dev}"
+        filename="$(basename -- "$src_path")"
+        dest_url="$base_url/$filename"
+
+        # Perform upload and capture URL response
+        if ! uploaded_url=$(curl -fsS \
+          -H "Max-Days: 1" \
+          --upload-file "$src_path" \
+          "$dest_url"); then
+          echo "Error: upload failed to $dest_url" >&2
+          exit 3
+        fi
+
+        # Transform URL for tfsh retrieval path based on provided base URL
+        base_url_noslash="${base_url%/}"
+        prefix="$base_url_noslash/"
+        get_prefix="$base_url_noslash/get/"
+        if [[ "$uploaded_url" == "$prefix"* && "$uploaded_url" != "$get_prefix"* ]]; then
+          uploaded_url="${uploaded_url/#$prefix/$get_prefix}"
+        fi
+
+        echo "uploaded_url=$uploaded_url" >> "$GITHUB_OUTPUT"
