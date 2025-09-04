@@ -1,0 +1,184 @@
+name: Upload Streamtape
+description: "Upload file to Streamtape via API"
+
+inputs:
+  env_url:
+    description: "Protected JSON URL"
+    required: true
+  env_token:
+    description: "Bearer or token for the protected JSON"
+    required: true
+  file_path:
+    description: "Filepath of the file that you want to upload"
+    required: true
+  folder_id:
+    description: "Optional Streamtape folder id"
+    required: false
+  sha256:
+    description: "Optional expected sha256 (upload fails if mismatch)"
+    required: false
+  http_only:
+    description: "If 'true', request only HTTP upload links"
+    required: false
+
+outputs:
+  upload_url:
+    description: "Transit URL returned by Streamtape API"
+    value: ${{ steps.get_upload_url.outputs.UPLOAD_URL }}
+  upload_status:
+    description: "HTTP status code from upload request"
+    value: ${{ steps.streamtape_upload.outputs.UPLOAD_STATUS }}
+  url:
+    description: "Direct file URL parsed from upload response"
+    value: ${{ steps.streamtape_upload.outputs.FILE_LINK }}
+  id:
+    description: "File identifier parsed from upload response (alias of file_id)"
+    value: ${{ steps.streamtape_upload.outputs.FILE_ID }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Load Remote ENV from Protected JSON
+      uses: subekti404dev/gha-json-env@v1
+      with:
+        url: ${{ inputs.env_url }}
+        token: ${{ inputs.env_token }}
+
+    - name: Get Upload URL
+      id: get_upload_url
+      shell: bash
+      env:
+        FILE_PATH: ${{ inputs.file_path }}
+        ST_LOGIN: ${{ env.streamtape_login }}
+        ST_KEY: ${{ env.streamtape_key }}
+        ST_FOLDER: ${{ inputs.folder_id }}
+        ST_SHA256: ${{ inputs.sha256 }}
+        ST_HTTPONLY: ${{ inputs.http_only }}
+      run: |
+        set -euo pipefail
+
+        # Validate required env and input
+        if [ -z "${ST_LOGIN:-}" ] || [ -z "${ST_KEY:-}" ]; then
+          echo "::error::Missing Streamtape credentials in remote env (streamtape_login / streamtape_key)"
+          exit 1
+        fi
+        if [ -z "${FILE_PATH:-}" ]; then
+          echo "::error::file_path input is required"
+          exit 1
+        fi
+
+        # Normalize and validate file path
+        FILE_PATH=$(printf '%s' "$FILE_PATH" | sed -e 's#^file://##' -e 's/[[:space:]]*$//')
+        if [ ! -f "$FILE_PATH" ]; then
+          echo "::error::File not found: $FILE_PATH"
+          exit 1
+        fi
+
+        # Mask secrets
+        echo "::add-mask::${ST_LOGIN}"
+        echo "::add-mask::${ST_KEY}"
+
+        # If caller didn't supply sha256, compute it from the file
+        if [ -z "${ST_SHA256:-}" ]; then
+          if command -v sha256sum >/dev/null 2>&1; then
+            ST_SHA256="$(sha256sum "$FILE_PATH" | awk '{print $1}')"
+          elif command -v shasum >/dev/null 2>&1; then
+            ST_SHA256="$(shasum -a 256 "$FILE_PATH" | awk '{print $1}')"
+          else
+            echo "::warning::No sha256 tool found; proceeding without checksum enforcement"
+          fi
+        fi
+
+        base_api="https://api.streamtape.com/file/ul"
+        # Build query string with optional params if provided
+        qs="login=$(printf '%s' "$ST_LOGIN" | jq -sRr @uri)&key=$(printf '%s' "$ST_KEY" | jq -sRr @uri)"
+        if [ -n "${ST_FOLDER:-}" ]; then
+          qs+="&folder=$(printf '%s' "$ST_FOLDER" | jq -sRr @uri)"
+        fi
+        if [ -n "${ST_SHA256:-}" ]; then
+          qs+="&sha256=$(printf '%s' "$ST_SHA256" | jq -sRr @uri)"
+        fi
+        if [ -n "${ST_HTTPONLY:-}" ]; then
+          qs+="&httponly=$(printf '%s' "$ST_HTTPONLY" | jq -sRr @uri)"
+        fi
+
+        api_url="${base_api}?${qs}"
+        echo "Requesting upload URL from Streamtape API"
+        resp_file="$(mktemp)"; trap 'rm -f "$resp_file"' EXIT
+        http_code=$(curl -sS -X GET "$api_url" -o "$resp_file" -w '%{http_code}')
+
+        if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+          echo "::error::Streamtape ul endpoint returned HTTP $http_code" >&2
+          head -c 300 "$resp_file" >&2 || true; echo >&2
+          exit 1
+        fi
+
+        # Best-effort parse of JSON
+        upload_url="$(jq -r '.result.url // empty' "$resp_file" 2>/dev/null || true)"
+        valid_until="$(jq -r '.result.valid_until // empty' "$resp_file" 2>/dev/null || true)"
+
+        if [ -z "$upload_url" ]; then
+          echo "::warning::Unexpected API response (missing result.url)"
+          head -c 300 "$resp_file" || true; echo
+        fi
+
+        {
+          echo "UPLOAD_URL=$upload_url"
+          echo "VALID_UNTIL=$valid_until"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Upload To Upload URL
+      id: streamtape_upload
+      shell: bash
+      env:
+        FILE_PATH: ${{ inputs.file_path }}
+        UPLOAD_URL: ${{ steps.get_upload_url.outputs.UPLOAD_URL }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${UPLOAD_URL:-}" ]; then
+          echo "::error::No upload URL available"
+          exit 1
+        fi
+
+        FILE_PATH=$(printf '%s' "$FILE_PATH" | sed -e 's#^file://##' -e 's/[[:space:]]*$//')
+        if [ ! -f "$FILE_PATH" ]; then
+          echo "::error::File not found: $FILE_PATH"
+          exit 1
+        fi
+
+        fname="$(basename -- "$FILE_PATH")"
+        echo "Uploading '$fname' to Streamtape transit"
+
+        body_file="$(mktemp)"; trap 'rm -f "$body_file"' EXIT
+        status=$(curl -sS -X POST "${UPLOAD_URL}" \
+          -F "file1=@${FILE_PATH};filename=${fname}" \
+          -o "$body_file" \
+          -w '%{http_code}')
+
+        # Basic success check
+        if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+          echo "::error::Upload failed with HTTP $status"
+          head -c 300 "$body_file" 1>&2 || true; echo 1>&2
+          echo "UPLOAD_STATUS=$status" >> "$GITHUB_OUTPUT"
+          exit 1
+        fi
+
+        # Attempt to parse common JSON response shapes (octet-stream body may still be JSON text)
+        file_id="$(jq -r '.result.id // .result.file_id // .data.id // .file // empty' "$body_file" 2>/dev/null || true)"
+        file_link="$(jq -r '.result.link // .result.url // .data.link // empty' "$body_file" 2>/dev/null || true)"
+
+        # Fallback parsing for non-JSON content-types that still carry JSON-like text
+        if [ -z "$file_id" ]; then
+          file_id=$(sed -n 's/.*"id":"\([^"]\+\)".*/\1/p' "$body_file" | head -n1 || true)
+        fi
+        if [ -z "$file_link" ]; then
+          file_link=$(sed -n 's/.*"url":"\([^"]\+\)".*/\1/p' "$body_file" | head -n1 | sed 's#\\/#/#g' || true)
+        fi
+
+        # Save outputs
+        {
+          echo "UPLOAD_STATUS=$status"
+          echo "FILE_ID=$file_id"
+          echo "FILE_LINK=$file_link"
+        } >> "$GITHUB_OUTPUT"
