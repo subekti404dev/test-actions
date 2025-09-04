@@ -300,7 +300,7 @@ jobs:
 
       - name: Download file from gdrive (composite)
         id: dl_gdrive
-        uses: ./.github/actions/download-gdrive@main
+        uses: subekti404dev/test-actions/.github/actions/download-gdrive@main
         with:
           env_url: ${{ secrets.ENV_URL }}
           env_token: ${{ secrets.ENV_TOKEN }}
@@ -308,7 +308,7 @@ jobs:
 
       - name: Upload file to Streamtape (composite)
         id: upload_streamtape
-        uses: ./.github/actions/upload-streamtape@main
+        uses: subekti404dev/test-actions/.github/actions/upload-streamtape@main
         with:
           env_url: ${{ secrets.ENV_URL }}
           env_token: ${{ secrets.ENV_TOKEN }}
