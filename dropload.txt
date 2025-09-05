@@ -1,0 +1,13 @@
+# get upload url
+- request:
+curl --location 'https://dropload.tv/api/upload/server?key={{key}}'
+- response:
+{"msg":"OK","result":"https://upl01.dropcdn.io/upload/01","status":200,"server_time":"2025-09-05 18:50:55"}
+
+# upload file
+- request:
+curl --location 'https://upl01.dropcdn.io/upload/01' \
+--form 'file=@"/home/urip/Videos/fakecam.mp4"' \
+--form 'key="{{}}"'
+- response:
+{"msg": "OK", "status": 200, "files": [ { "filecode":"fmdn2syisvm9", "filename": "fakecam.mp4", "status": "OK" } ]}

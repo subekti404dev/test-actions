@@ -1,0 +1,138 @@
+name: Upload Dropload
+description: "Upload file to Dropload via API"
+
+inputs:
+  env_url:
+    description: "Protected JSON URL"
+    required: true
+  env_token:
+    description: "Bearer or token for the protected JSON"
+    required: true
+  file_path:
+    description: "Filepath of the file that you want to upload"
+    required: true
+
+outputs:
+  upload_status:
+    description: "HTTP status of upload request"
+    value: ${{ steps.dropload_upload.outputs.upload_status }}
+  upload_url:
+    description: "Upload server URL returned by dropload"
+    value: ${{ steps.dropload_upload.outputs.upload_url }}
+  file_code:
+    description: "File code returned by dropload"
+    value: ${{ steps.dropload_upload.outputs.file_code }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Load Remote ENV from Protected JSON
+      uses: subekti404dev/gha-json-env@v1
+      with:
+        url: ${{ inputs.env_url }}
+        token: ${{ inputs.env_token }}
+
+    - name: Upload to Dropload
+      id: dropload_upload
+      shell: bash
+      env:
+        DROPOLOAD_KEY: ${{ env.dropload_key }}
+        FILE_PATH: ${{ inputs.file_path }}
+      run: |
+        set -euo pipefail
+
+        log() { printf '%s\n' "$*"; }
+        err() { printf '❌ %s\n' "$*" 1>&2; }
+
+        # Validate inputs
+        if [ -z "${DROPOLOAD_KEY:-}" ]; then
+          err "Missing dropload_key in remote env"
+          exit 1
+        fi
+        if [ -z "${FILE_PATH:-}" ]; then
+          err "file_path input is required"
+          exit 1
+        fi
+
+        # Normalize file:// prefix and trim trailing whitespace
+        FILE_PATH=$(printf '%s' "$FILE_PATH" | sed -e 's#^file://##' -e 's/[[:space:]]*$//')
+        if [ ! -f "$FILE_PATH" ]; then
+          err "File not found: $FILE_PATH"
+          exit 1
+        fi
+
+        # Mask secret
+        log "::add-mask::${DROPOLOAD_KEY}"
+
+        workdir="$(mktemp -d)"
+        trap 'rm -rf "$workdir"' EXIT
+
+        server_resp="$workdir/server.json"
+        upload_resp="$workdir/upload.json"
+
+        user_agent="Mozilla/5.0 (X11; Linux x86_64)"
+
+        # 1) Get upload server URL
+        server_status=$(curl -sS -L -o "$server_resp" \
+          -w '%{http_code}' \
+          -H "User-Agent: $user_agent" \
+          "https://dropload.tv/api/upload/server?key=${DROPOLOAD_KEY}")
+
+        if [ "$server_status" -lt 200 ] || [ "$server_status" -ge 300 ]; then
+          err "Failed to get upload server (status $server_status)"
+          if [ -s "$server_resp" ]; then
+            err "Response snippet:"
+            head -c 300 "$server_resp" 1>&2 || true
+            printf '\n' 1>&2
+          fi
+          exit 1
+        fi
+
+        # Extract result URL from JSON: {"msg":"OK","result":"https://...","status":200,...}
+        upload_url=$(grep -o '"result"[[:space:]]*:[[:space:]]*"[^"]*"' "$server_resp" | head -n1 | sed 's/.*"result"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        if [ -z "$upload_url" ]; then
+          err "Server response missing result upload_url"
+          exit 1
+        fi
+
+        # 2) Upload file
+        upload_status=$(curl -sS -L -o "$upload_resp" \
+          -w '%{http_code}' \
+          -H "User-Agent: $user_agent" \
+          -F "file=@${FILE_PATH}" \
+          -F "key=${DROPOLOAD_KEY}" \
+          "$upload_url")
+
+        if [ "$upload_status" -lt 200 ] || [ "$upload_status" -ge 300 ]; then
+          err "Upload returned status $upload_status"
+          if [ -s "$upload_resp" ]; then
+            err "Response snippet:"
+            head -c 300 "$upload_resp" 1>&2 || true
+            printf '\n' 1>&2
+          fi
+          echo "upload_status=${upload_status}" >> "${GITHUB_OUTPUT:-/dev/null}" 2>/dev/null || true
+          exit 1
+        fi
+
+        # Parse file_code from response JSON: { files: [ { "filecode":"..." } ] }
+        file_code=$(grep -o '"filecode"[[:space:]]*:[[:space:]]*"[^"]*"' "$upload_resp" | head -n1 | sed 's/.*"filecode"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        if [ -z "$file_code" ]; then
+          err "Upload response missing filecode"
+          echo "upload_status=${upload_status}" >> "${GITHUB_OUTPUT:-/dev/null}" 2>/dev/null || true
+          exit 1
+        fi
+
+        # Write outputs
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+          {
+            echo "upload_status=${upload_status}"
+            echo "upload_url=${upload_url}"
+            echo "file_code=${file_code}"
+          } >> "$GITHUB_OUTPUT"
+          log "✅ Dropload upload completed (status ${upload_status}). File code: ${file_code}"
+        else
+          log "upload_status=${upload_status}"
+          log "upload_url=${upload_url}"
+          log "file_code=${file_code}"
+        fi
+
