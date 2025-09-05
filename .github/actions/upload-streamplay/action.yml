@@ -1,0 +1,178 @@
+name: Upload Streamplay
+description: "Upload file to Streamplay transit"
+
+inputs:
+  env_url:
+    description: "Protected JSON URL"
+    required: true
+  env_token:
+    description: "Bearer or token for the protected JSON"
+    required: true
+  file_path:
+    description: "Filepath of the file that you want to upload"
+    required: true
+
+outputs:
+  progress_id:
+    description: "Progress ID used for upload"
+    value: ${{ steps.streamplay_upload.outputs.progress_id }}
+  upload_status:
+    description: "HTTP status of upload request"
+    value: ${{ steps.streamplay_upload.outputs.upload_status }}
+  upload_url:
+    description: "Transit URL used for upload"
+    value: ${{ steps.streamplay_upload.outputs.upload_url }}
+  file_code:
+    description: "File code returned by streamplay (fn)"
+    value: ${{ steps.streamplay_upload.outputs.file_code }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Load Remote ENV from Protected JSON
+      uses: subekti404dev/gha-json-env@v1
+      with:
+        url: ${{ inputs.env_url }}
+        token: ${{ inputs.env_token }}
+
+    - name: Upload to streamplay
+      id: streamplay_upload
+      shell: bash
+      env:
+        streamplay_USERNAME: ${{ env.streamplay_username }}
+        streamplay_PASSWORD: ${{ env.streamplay_password }}
+        FILE_PATH: ${{ inputs.file_path }}
+      run: |
+        set -euo pipefail
+        
+        # Validate inputs
+        if [ -z "${streamplay_USERNAME:-}" ] || [ -z "${streamplay_PASSWORD:-}" ]; then
+          echo "::error::Missing streamplay credentials in remote env (streamplay_username / streamplay_password)"
+          exit 1
+        fi
+        if [ -z "${FILE_PATH:-}" ]; then
+          echo "::error::file_path input is required"
+          exit 1
+        fi
+
+        log() { printf '%s\n' "$*"; }
+        err() { printf '❌ %s\n' "$*" 1>&2; }
+
+        # Normalize file:// prefix and trim trailing whitespace
+        FILE_PATH=$(printf '%s' "$FILE_PATH" | sed -e 's#^file://##' -e 's/[[:space:]]*$//')
+        if [ ! -f "$FILE_PATH" ]; then
+          err "File not found: $FILE_PATH"
+          exit 1
+        fi
+
+        # Mask secrets
+        log "::add-mask::${streamplay_USERNAME}"
+        log "::add-mask::${streamplay_PASSWORD}"
+
+        workdir="$(mktemp -d)"
+        trap 'rm -rf "$workdir"' EXIT
+
+        cookiejar="$workdir/cookies.txt"
+        hdrs="$workdir/headers.txt"
+        login_body="$workdir/login.html"
+
+        login_url="https://streamplay.to/"
+        user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0"
+
+        # Login to obtain xfsts cookie
+        curl -sS -X POST "$login_url" \
+          -H "User-Agent: $user_agent" \
+          -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
+          -H "Accept-Language: en-US,en;q=0.5" \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -H "Origin: https://streamplay.to" \
+          -H "Referer: https://streamplay.to/" \
+          -c "$cookiejar" \
+          -D "$hdrs" \
+          --data-urlencode "op=login" \
+          --data-urlencode "redirect=" \
+          --data-urlencode "login=${streamplay_USERNAME}" \
+          --data-urlencode "password=${streamplay_PASSWORD}" \
+          -o "$login_body" \
+          -w ''
+
+        # Extract xfsts from cookie jar (Netscape format, 7th column is value)
+        xfsts="$(awk '($0 !~ /^#/ && $0 ~ /\txfsts\t/) {print $7}' "$cookiejar" | tail -n1)"
+        if [ -z "$xfsts" ]; then
+          # Fallback: try headers directly
+          xfsts="$(grep -i "^Set-Cookie:" "$hdrs" | grep -o 'xfsts=[^;]*' | sed 's/^xfsts=//;q')"
+        fi
+        if [ -z "$xfsts" ]; then
+          err "Login failed: xfsts cookie not found"
+          if [ -s "$login_body" ]; then
+            err "Login response snippet:"
+            head -c 300 "$login_body" 1>&2 || true
+            printf '\n' 1>&2
+          fi
+          exit 1
+        fi
+
+        # Mask session token
+        log "::add-mask::${xfsts}"
+
+        # Generate 12-digit progress id
+        progress_id=""
+        for _ in {1..12}; do
+          progress_id+="$(( RANDOM % 10 ))"
+        done
+
+        base_url="https://upl-11202-215-158.spcdn.cc/upload/01"
+        upload_url="${base_url}?X-Progress-ID=${progress_id}&disk_id=01"
+
+        resp_html="$workdir/upload.html"
+
+        # Perform multipart upload
+        upload_status=$(curl -sS -X POST "$upload_url" \
+          -H "User-Agent: $user_agent" \
+          -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
+          -H "Accept-Language: en-US,en;q=0.5" \
+          -H "Origin: https://streamplay.to" \
+          -H "Referer: https://streamplay.to/" \
+          -b "$cookiejar" \
+          -F "file=@${FILE_PATH}" \
+          -o "$resp_html" \
+          -w '%{http_code}')
+
+        if [ "$upload_status" -lt 200 ] || [ "$upload_status" -ge 300 ]; then
+          err "Transit upload returned status $upload_status"
+          if [ -s "$resp_html" ]; then
+            err "Response snippet:"
+            head -c 200 "$resp_html" 1>&2 || true
+            printf '\n' 1>&2
+          fi
+          echo "upload_status=${upload_status}" >> "${GITHUB_OUTPUT:-/dev/null}" 2>/dev/null || true
+          exit 1
+        fi
+
+        # Extract <textarea name="fn"> value (file code)
+        file_code="$(grep -Poz '(?s)<textarea\s+name=["\x27]fn["\x27]\s*>\s*\K(.+?)\s*(?=</textarea>)' "$resp_html" | tr -d '\0' | head -n1 || true)"
+        if [ -z "$file_code" ]; then
+          # Secondary attempt using sed
+          file_code="$(sed -n '/<textarea[[:space:]]\{1,\}name=["\'"'"']fn["\'"'"']/{:a;N;/<\/textarea>/!ba;s/.*<textarea[^>]*>\s*//;s/\s*<\/textarea>.*//;p;}' "$resp_html" | head -n1 | sed 's/[\r\n]//g' || true)"
+        fi
+        if [ -z "$file_code" ]; then
+          err "Upload response missing file code (fn)"
+          echo "upload_status=${upload_status}" >> "${GITHUB_OUTPUT:-/dev/null}" 2>/dev/null || true
+          exit 1
+        fi
+
+        # Write outputs
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+          {
+            echo "upload_status=${upload_status}"
+            echo "progress_id=${progress_id}"
+            echo "upload_url=${upload_url}"
+            echo "file_code=${file_code}"
+          } >> "$GITHUB_OUTPUT"
+          log "✅ Upload completed (status ${upload_status}). Progress ID: ${progress_id}"
+        else
+          log "upload_status=${upload_status}"
+          log "progress_id=${progress_id}"
+          log "upload_url=${upload_url}"
+          log "file_code=${file_code}"
+        fi
