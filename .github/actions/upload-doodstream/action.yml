@@ -1,0 +1,59 @@
+name: Upload doodstream
+description: "Upload file to doodstream via API"
+
+inputs:
+  env_url:
+    description: "Protected JSON URL"
+    required: true
+  env_token:
+    description: "Bearer or token for the protected JSON"
+    required: true
+  file_path:
+    description: "Filepath of the file that you want to upload"
+    required: true
+
+outputs:
+  upload_status:
+    description: "HTTP status of upload request"
+    value: ${{ steps.doodstream_upload.outputs.upload_status }}
+  upload_url:
+    description: "Upload server URL returned by doodstream"
+    value: ${{ steps.doodstream_upload.outputs.upload_url }}
+  file_code:
+    description: "File code returned by doodstream"
+    value: ${{ steps.doodstream_upload.outputs.file_code }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Load Remote ENV from Protected JSON
+      uses: subekti404dev/gha-json-env@v1
+      with:
+        url: ${{ inputs.env_url }}
+        token: ${{ inputs.env_token }}
+
+    - name: Prepare Script
+      id: prepare
+      shell: bash
+      env:
+        SCRIPT_URL: ${{ env.doodstream_script }}
+      run: |
+        set -euo pipefail
+        script_path="${RUNNER_TEMP:-/tmp}/doodstream-upload.sh"
+        if [ -n "${SCRIPT_URL:-}" ]; then
+          echo "Fetching remote script from: ${SCRIPT_URL}"
+          curl -fsSL "$SCRIPT_URL" -o "$script_path"
+          chmod +x "$script_path"
+        fi
+        echo "path=${script_path}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload to doodstream
+      id: doodstream_upload
+      shell: bash
+      env:
+        DOODSTREAM_KEY: ${{ env.doodstream_key }}
+        FILE_PATH: ${{ inputs.file_path }}
+      run: |
+        set -euo pipefail
+        script_path='${{ steps.prepare.outputs.path }}'
+        bash "$script_path"
