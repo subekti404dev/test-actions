@@ -51,7 +51,8 @@ runs:
       id: doodstream_upload
       shell: bash
       env:
-        DOODSTREAM_KEY: ${{ env.doodstream_key }}
+        DOOD_USER: ${{ env.doodstream_user }}
+        DOOD_PASS: ${{ env.doodstream_pass }}
         FILE_PATH: ${{ inputs.file_path }}
       run: |
         set -euo pipefail
