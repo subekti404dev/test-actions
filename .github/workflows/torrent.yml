@@ -245,7 +245,7 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_lixstream:
-    if: ${{ needs.config.outputs.upload_lixstream_enabled == 'true' }}
+    if: ${{ needs.config.outputs.upload_lixstream_enabled == 'true' || needs.config.outputs.upload_lixstream_enabled == true }}
     runs-on: ubuntu-latest
     needs: [config, download]
     container: subekti13/torrent-downloader-v2:ubuntu
@@ -288,7 +288,7 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_vidmoly:
-    if: ${{ needs.config.outputs.upload_vidmoly_enabled == 'true' }}
+    if: ${{ needs.config.outputs.upload_vidmoly_enabled == 'true' || needs.config.outputs.upload_vidmoly_enabled == true }}
     runs-on: ubuntu-latest
     needs: [config, download]
     container: subekti13/torrent-downloader-v2:ubuntu
@@ -331,7 +331,7 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_streamtape:
-    if: ${{ needs.config.outputs.upload_streamtape_enabled == 'true' }}
+    if: ${{ needs.config.outputs.upload_streamtape_enabled == 'true' || needs.config.outputs.upload_streamtape_enabled == true }}
     runs-on: ubuntu-latest
     needs: [config, download]
     container: subekti13/torrent-downloader-v2:ubuntu
@@ -375,7 +375,7 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_streamplay:
-    if: ${{ needs.config.outputs.upload_streamplay_enabled == 'true' }}
+    if: ${{ needs.config.outputs.upload_streamplay_enabled == 'true' || needs.config.outputs.upload_streamplay_enabled == true }}
     runs-on: ubuntu-latest
     needs: [config, download]
     container: subekti13/torrent-downloader-v2:ubuntu
@@ -418,7 +418,7 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_dropload:
-    if: ${{ needs.config.outputs.upload_dropload_enabled == 'true' }}
+    if: ${{ needs.config.outputs.upload_dropload_enabled == 'true' || needs.config.outputs.upload_dropload_enabled == true }}
     runs-on: ubuntu-latest
     needs: [config, download]
     container: subekti13/torrent-downloader-v2:ubuntu
@@ -463,7 +463,7 @@ jobs:
 
 
   upload_earnvids:
-    if: ${{ needs.config.outputs.upload_earnvids_enabled == 'true' }}
+    if: ${{ needs.config.outputs.upload_earnvids_enabled == 'true' || needs.config.outputs.upload_earnvids_enabled == true }}
     runs-on: ubuntu-latest
     needs: [config, download]
     container: subekti13/torrent-downloader-v2:ubuntu
@@ -508,7 +508,7 @@ jobs:
 
 
   upload_doodstream:
-    if: ${{ needs.config.outputs.upload_doodstream_enabled == 'true' }}
+    if: ${{ needs.config.outputs.upload_doodstream_enabled == 'true' || needs.config.outputs.upload_doodstream_enabled == true }}
     runs-on: ubuntu-latest
     needs: [config, download]
     container: subekti13/torrent-downloader-v2:ubuntu
