@@ -95,6 +95,8 @@ runs:
           exit 1
         fi
 
+        echo "$upload_url"
+
         # 2) Upload file
         upload_status=$(curl -sS -L -o "$upload_resp" \
           -w '%{http_code}' \
