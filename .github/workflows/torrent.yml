@@ -36,28 +36,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bool() {
-            # $1 = incoming string, $2 = default (true/false)
-            local raw="${1:-}"
-            local def="${2}"
-            if [ -z "$raw" ]; then
-              echo "$def"
-              return
-            fi
-            case "${raw,,}" in
-              true|1|yes|on) echo true;;
-              false|0|no|off) echo false;;
-              *) echo "$def";;
-            esac
-          }
-
-          echo "upload_lixstream_enabled=$(bool "${env.lixstream_enabled:-}" false)" >> "$GITHUB_OUTPUT"
-          echo "upload_vidmoly_enabled=$(bool "${env.vidmoly_enabled:-}" false)" >> "$GITHUB_OUTPUT"
-          echo "upload_streamtape_enabled=$(bool "${env.streamtape_enabled:-}" false)" >> "$GITHUB_OUTPUT"
-          echo "upload_streamplay_enabled=$(bool "${env.streamplay_enabled:-}" false)" >> "$GITHUB_OUTPUT"
-          echo "upload_dropload_enabled=$(bool "${env.dropload_enabled:-}" false)" >> "$GITHUB_OUTPUT"
-          echo "upload_earnvids_enabled=$(bool "${env.earnvids_enabled:-}" false)" >> "$GITHUB_OUTPUT"
-          echo "upload_doodstream_enabled=$(bool "${env.doodstream_enabled:-}" false)" >> "$GITHUB_OUTPUT"
+        
+          echo "upload_lixstream_enabled=${lixstream_enabled:-}" >> "$GITHUB_OUTPUT"
+          echo "upload_vidmoly_enabled=${vidmoly_enabled:-}" >> "$GITHUB_OUTPUT"
+          echo "upload_streamtape_enabled=${streamtape_enabled:-}" >> "$GITHUB_OUTPUT"
+          echo "upload_streamplay_enabled=${streamplay_enabled:-}" >> "$GITHUB_OUTPUT"
+          echo "upload_dropload_enabled=${dropload_enabled:-}" >> "$GITHUB_OUTPUT"
+          echo "upload_earnvids_enabled=${earnvids_enabled:-}" >> "$GITHUB_OUTPUT"
+          echo "upload_doodstream_enabled=${doodstream_enabled:-}" >> "$GITHUB_OUTPUT"
 
   download:
     runs-on: ubuntu-latest
