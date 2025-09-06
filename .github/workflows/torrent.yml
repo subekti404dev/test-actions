@@ -15,36 +15,6 @@ on:
         default: ''
 
 jobs:
-  config:
-    runs-on: ubuntu-latest
-    outputs:
-      upload_lixstream_enabled: ${{ steps.out.outputs.upload_lixstream_enabled }}
-      upload_vidmoly_enabled: ${{ steps.out.outputs.upload_vidmoly_enabled }}
-      upload_streamtape_enabled: ${{ steps.out.outputs.upload_streamtape_enabled }}
-      upload_streamplay_enabled: ${{ steps.out.outputs.upload_streamplay_enabled }}
-      upload_dropload_enabled: ${{ steps.out.outputs.upload_dropload_enabled }}
-      upload_earnvids_enabled: ${{ steps.out.outputs.upload_earnvids_enabled }}
-      upload_doodstream_enabled: ${{ steps.out.outputs.upload_doodstream_enabled }}
-    steps:
-      - name: Load Remote ENV from Protected JSON
-        uses: subekti404dev/gha-json-env@v1
-        with:
-          url: ${{ secrets.ENV_URL }}
-          token: ${{ secrets.ENV_TOKEN }}
-      - name: Export Config Outputs
-        id: out
-        shell: bash
-        run: |
-          set -euo pipefail
-        
-          echo "upload_lixstream_enabled=${lixstream_enabled:-}" >> "$GITHUB_OUTPUT"
-          echo "upload_vidmoly_enabled=${vidmoly_enabled:-}" >> "$GITHUB_OUTPUT"
-          echo "upload_streamtape_enabled=${streamtape_enabled:-}" >> "$GITHUB_OUTPUT"
-          echo "upload_streamplay_enabled=${streamplay_enabled:-}" >> "$GITHUB_OUTPUT"
-          echo "upload_dropload_enabled=${dropload_enabled:-}" >> "$GITHUB_OUTPUT"
-          echo "upload_earnvids_enabled=${earnvids_enabled:-}" >> "$GITHUB_OUTPUT"
-          echo "upload_doodstream_enabled=${doodstream_enabled:-}" >> "$GITHUB_OUTPUT"
-
   download:
     runs-on: ubuntu-latest
     outputs:
@@ -231,9 +201,8 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_lixstream:
-    if: ${{ needs.config.outputs.upload_lixstream_enabled == 'true' || needs.config.outputs.upload_lixstream_enabled == true }}
     runs-on: ubuntu-latest
-    needs: [config, download]
+    needs: download
     container: subekti13/torrent-downloader-v2:ubuntu
     steps:
       - uses: actions/checkout@v4
@@ -274,9 +243,9 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_vidmoly:
-    if: ${{ needs.config.outputs.upload_vidmoly_enabled == 'true' || needs.config.outputs.upload_vidmoly_enabled == true }}
+    if: ${{ false }} # temporarily disabled
     runs-on: ubuntu-latest
-    needs: [config, download]
+    needs: download
     container: subekti13/torrent-downloader-v2:ubuntu
     steps:
       - uses: actions/checkout@v4
@@ -317,9 +286,8 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_streamtape:
-    if: ${{ needs.config.outputs.upload_streamtape_enabled == 'true' || needs.config.outputs.upload_streamtape_enabled == true }}
     runs-on: ubuntu-latest
-    needs: [config, download]
+    needs: download
     container: subekti13/torrent-downloader-v2:ubuntu
     steps:
       - uses: actions/checkout@v4
@@ -361,9 +329,9 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_streamplay:
-    if: ${{ needs.config.outputs.upload_streamplay_enabled == 'true' || needs.config.outputs.upload_streamplay_enabled == true }}
+    if: ${{ false }} # temporarily disabled
     runs-on: ubuntu-latest
-    needs: [config, download]
+    needs: download
     container: subekti13/torrent-downloader-v2:ubuntu
     steps:
       - uses: actions/checkout@v4
@@ -404,9 +372,9 @@ jobs:
           eval "${{ github.event.inputs.on_finished }}"
 
   upload_dropload:
-    if: ${{ needs.config.outputs.upload_dropload_enabled == 'true' || needs.config.outputs.upload_dropload_enabled == true }}
+    if: ${{ false }} # temporarily disabled
     runs-on: ubuntu-latest
-    needs: [config, download]
+    needs: download
     container: subekti13/torrent-downloader-v2:ubuntu
     steps:
       - uses: actions/checkout@v4
@@ -449,9 +417,8 @@ jobs:
 
 
   upload_earnvids:
-    if: ${{ needs.config.outputs.upload_earnvids_enabled == 'true' || needs.config.outputs.upload_earnvids_enabled == true }}
     runs-on: ubuntu-latest
-    needs: [config, download]
+    needs: download
     container: subekti13/torrent-downloader-v2:ubuntu
     steps:
       - uses: actions/checkout@v4
@@ -494,9 +461,8 @@ jobs:
 
 
   upload_doodstream:
-    if: ${{ needs.config.outputs.upload_doodstream_enabled == 'true' || needs.config.outputs.upload_doodstream_enabled == true }}
     runs-on: ubuntu-latest
-    needs: [config, download]
+    needs: download
     container: subekti13/torrent-downloader-v2:ubuntu
     steps:
       - uses: actions/checkout@v4
