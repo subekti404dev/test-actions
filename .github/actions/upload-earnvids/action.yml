@@ -51,7 +51,7 @@ runs:
       id: earnvids_upload
       shell: bash
       env:
-        DROPOLOAD_KEY: ${{ env.earnvids_key }}
+        EARNVIDS_KEY: ${{ env.earnvids_key }}
         FILE_PATH: ${{ inputs.file_path }}
       run: |
         set -euo pipefail
