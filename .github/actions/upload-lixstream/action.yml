@@ -31,7 +31,7 @@ runs:
       shell: sh
       env:
         API_URL: https://api.luxsioab.com/pub/api/local/upload
-        API_KEY: ${{ env.torent_downloader_lixstream_api_key }}
+        API_KEY: ${{ env.lixstream_key }}
         VIDEO_FILE: ${{ inputs.file_path }}
       run: |
         set -eu
@@ -91,7 +91,7 @@ runs:
       shell: sh
       env:
         API_URL_CALLBACK: https://api.luxsioab.com/pub/api/local/upload/callback
-        API_KEY: ${{ env.torent_downloader_lixstream_api_key }}
+        API_KEY: ${{ env.lixstream_key }}
         UPLOAD_ID: ${{ steps.register_file.outputs.UPLOAD_ID }}
       run: |
         set -eu
