@@ -413,3 +413,47 @@ jobs:
           echo "Executing custom on_finished command:"
           echo "${{ github.event.inputs.on_finished }}"
           eval "${{ github.event.inputs.on_finished }}"
+
+
+  upload_earnvids:
+    runs-on: ubuntu-latest
+    needs: download
+    container: subekti13/torrent-downloader-v2:ubuntu
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load Remote ENV from Protected JSON
+        uses: subekti404dev/gha-json-env@v1
+        with:
+          url: ${{ secrets.ENV_URL }}
+          token: ${{ secrets.ENV_TOKEN }}
+
+      - name: Download file from gdrive (composite)
+        id: dl_gdrive
+        uses: subekti404dev/test-actions/.github/actions/download-gdrive@main
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          remote_filepath: ${{ needs.download.outputs.drive_filepath }}
+
+      - name: Upload file to earnvids (composite)
+        id: upload_earnvids
+        uses: subekti404dev/test-actions/.github/actions/upload-earnvids@main
+        with:
+          env_url: ${{ secrets.ENV_URL }}
+          env_token: ${{ secrets.ENV_TOKEN }}
+          file_path: ${{ steps.dl_gdrive.outputs.local_filepath }}
+
+      - name: Execute on_finished command
+        if: ${{ github.event.inputs.on_finished != '' && steps.upload_earnvids.outputs.file_code != '' }}
+        shell: sh
+        env:
+          IS_FAILED: "false"
+          TYPE: "earnvids"
+          FILENAME: ${{ github.event.inputs.filename || '' }}
+          SOURCE_ID: ${{ steps.upload_earnvids.outputs.file_code }}
+        run: |
+          set -eu
+          echo "Executing custom on_finished command:"
+          echo "${{ github.event.inputs.on_finished }}"
+          eval "${{ github.event.inputs.on_finished }}"
