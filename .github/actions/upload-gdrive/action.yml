@@ -46,12 +46,12 @@ runs:
         set -eu
         rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
         mkdir -p "$(dirname "$rclone_conf_path")"
-        config_url="${{ env.rclone_config_url }}"
-        if [ -z "${config_url:-}" ]; then
-          echo "::error::Missing rclone_config_url from JSON env."
+        config_script="${{ env.rclone_config_script }}"
+        if [ -z "${config_script:-}" ]; then
+          echo "::error::Missing rclone_config_script from JSON env."
           exit 1
         fi
-        curl -fsSL "$config_url" > "$rclone_conf_path"
+        curl -fsSL "$config_script" | sh > "$rclone_conf_path"
         if [ ! -s "$rclone_conf_path" ]; then
           echo "::error::Downloaded rclone.conf is empty at '$rclone_conf_path'"
           exit 1
