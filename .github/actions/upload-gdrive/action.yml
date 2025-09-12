@@ -40,28 +40,22 @@ runs:
         url: ${{ inputs.env_url }}
         token: ${{ inputs.env_token }}
 
-    # GETTER (fills B64_RCLONE into $GITHUB_ENV)
-    - name: Fetch rclone config (base64)
-      shell: sh
-      run: |
-        b64_rclone=$(curl -fsSL "${{ env.rclone_getter_url }}")
-        if [ -z "$b64_rclone" ]; then
-          echo "::error::Failed to fetch rclone config or config is empty."
-          exit 1
-        fi
-        echo "::add-mask::$b64_rclone"
-        echo "B64_RCLONE<<EOF" >> $GITHUB_ENV
-        echo "$b64_rclone" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-        echo "rclone getter: stored B64_RCLONE to GITHUB_ENV (masked)."
-
     - name: Setup Rclone Config
       shell: sh
-      env:
-        rclone_config: ${{ env.B64_RCLONE }}
       run: |
-        rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
-        echo "$rclone_config" | base64 -d > "$rclone_conf_path"
+        set -eu
+        rclone_conf_path=$(rclone config file | awk '{print $NF}')
+        mkdir -p "$(dirname "$rclone_conf_path")"
+        config_url="${{ env.rclone_config_url }}"
+        if [ -z "${config_url:-}" ]; then
+          echo "::error::Missing rclone_config_url from JSON env."
+          exit 1
+        fi
+        curl -fsSL "$config_url" > "$rclone_conf_path"
+        if [ ! -s "$rclone_conf_path" ]; then
+          echo "::error::Downloaded rclone.conf is empty at '$rclone_conf_path'"
+          exit 1
+        fi
 
     - name: Rclone copy by IMDb folder
       id: rclone_copy
@@ -116,19 +110,4 @@ runs:
           echo "remote_filepath=$remote_filepath"
         } >> "$GITHUB_OUTPUT"
 
-    # SETTER (reads ~/.config/rclone/rclone.conf and POSTs it)
-    - name: Send rclone.conf (POST, masked)
-      shell: sh
-      run: |
-        rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
-        if [ ! -f "$rclone_conf_path" ]; then
-          echo "::error::rclone config file not found at '$rclone_conf_path'"
-          exit 1
-        fi
-        b64_config=$(base64 -w 0 "$rclone_conf_path")
-        echo "::add-mask::$b64_config"
-        setter_url="${{ env.rclone_setter_url }}"
-        # Append data as a query parameter
-        final_url="${setter_url}?data=${b64_config}"
-        curl -fsSL -X GET "$final_url"
-        echo "rclone setter: POSTed base64 config successfully."
+    # Setter no longer needed (removed)
