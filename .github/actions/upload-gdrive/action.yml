@@ -44,7 +44,7 @@ runs:
       shell: sh
       run: |
         set -eu
-        rclone_conf_path=$(rclone config file | awk '{print $NF}')
+        rclone_conf_path=$(rclone config file | grep 'rclone.conf' | cut -d' ' -f6)
         mkdir -p "$(dirname "$rclone_conf_path")"
         config_url="${{ env.rclone_config_url }}"
         if [ -z "${config_url:-}" ]; then
