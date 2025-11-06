@@ -71,7 +71,7 @@ jobs:
       - run: cat galaxy-stream-mobile/eas.json
       
       - name: Build apk
-        run: cd galaxy-stream-mobile/ && yarn build-prod --local --output galaxy.apk
+        run: cd galaxy-stream-mobile/ && yarn build:apk --local --output galaxy.apk
 
       - name: Check Dir
         run: ls -lah
