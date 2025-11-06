@@ -1,0 +1,83 @@
+name: Build APK Galaxy Stream
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to clone'
+        required: false
+        default: 'main'
+
+jobs:
+  build_apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Load Remote ENV from Protected JSON
+        uses: subekti404dev/gha-json-env@v1
+        with:
+          url: ${{ secrets.ENV_URL }}
+          token: ${{ secrets.ENV_TOKEN }}
+
+      - name: Decode SSH key
+        id: decode_key
+        run: |
+          echo "key<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ env.durioo_builder_b64_ssh_key }}" | base64 -d >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+      - name: Setup SSH Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ steps.decode_key.outputs.key }}
+
+      - name: Clone Repo
+        run: git clone -b ${{ github.event.inputs.branch }} https://github.com/subekti404dev/galaxy-stream-mobile
+
+      - name: Install Utilities
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo sh - 
+          sudo apt-get install -y nodejs
+          sudo npm install -g eas-cli
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: Install Java 17
+        uses: actions/setup-java@v1
+        with:
+          java-version: '17.x'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Ensure .expo directory exists
+        run: mkdir -p ~/.expo
+
+      - name: Write EXPO_TOKEN (base64 decoded) to ~/.expo/state.json
+        run: |
+          mkdir -p ~/.expo
+          echo "${{ env.durioo_builder_expo_token }}" | base64 -d > ~/.expo/state.json
+
+
+      - name: Install Deps
+        run: cd galaxy-stream-mobile/ && yarn
+
+      - name: Update eas.json
+        uses: jossef/action-set-json-field@v2.1
+        with:
+          file: galaxy-stream-mobile/eas.json
+          field: build.production.android
+          value: '{"buildType": "apk"}'
+          parse_json: true
+
+      - run: cat galaxy-stream-mobile/eas.json
+      
+      - name: Build apk
+        run: cd galaxy-stream-mobile/ && yarn build-prod --local --output galaxy.apk
+
+      - name: Check Dir
+        run: ls -lah
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: galaxy-apk
+          path: 'galaxy-stream-mobile/galaxy.apk'
