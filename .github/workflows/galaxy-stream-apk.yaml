@@ -30,7 +30,7 @@ jobs:
           ssh-private-key: ${{ steps.decode_key.outputs.key }}
 
       - name: Clone Repo
-        run: git clone -b ${{ github.event.inputs.branch }} https://github.com/subekti404dev/galaxy-stream-mobile
+        run: git clone -b ${{ github.event.inputs.branch }} https://github.com/subekti404dev/galaxy-stream-mobile.git
 
       - name: Install Utilities
         run: |
