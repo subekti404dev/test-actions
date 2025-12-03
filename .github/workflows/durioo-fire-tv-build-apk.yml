@@ -69,6 +69,16 @@ jobs:
           parse_json: true
 
       - run: cat duriooplus-mobile-v2/eas.json
+
+      - name: Free disk space
+        run: |
+          echo "Removing unused SDKs and packages..."
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache
+          sudo docker image prune -af
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/share/boost
+          df -h
       
       - name: Build apk
         run: cd duriooplus-mobile-v2/ && yarn build-prod-tv --local --output durioo.apk
