@@ -1,0 +1,54 @@
+name: Build Samsung WGT Durioo
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to clone'
+        required: false
+        default: 'web-smarttv-new'
+
+jobs:
+  build_wgt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Load Remote ENV from Protected JSON
+        uses: subekti404dev/gha-json-env@v1
+        with:
+          url: ${{ secrets.ENV_URL }}
+          token: ${{ secrets.ENV_TOKEN }}
+
+      - name: Decode SSH key
+        id: decode_key
+        run: |
+          echo "key<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ env.durioo_builder_b64_ssh_key }}" | base64 -d >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+      - name: Setup SSH Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ steps.decode_key.outputs.key }}
+
+      - name: Clone Repon
+        run: git clone -b ${{ github.event.inputs.branch }} git@github.com:duriooplus/duriooplus-web-v2.git
+
+      - name: Install Deps
+        run: cd duriooplus-web-v2/ && yarn
+
+      - name: Build Tizen Web Bundle
+        run: cd duriooplus-web-v2/ && yarn build:tizen:production
+
+      - name: Build & Sign WGT
+        uses: sourcetoad/tizen-build-action@v1
+        with:
+          project-dir: duriooplus-web-v2/tizen
+          author-key: ${{ env.durioo_samsung_author_key }}
+          author-password: ${{ env.durioo_samsung_author_password }}
+          distributor-key: ${{ env.durioo_samsung_distributor_key }}
+          distributor-password: ${{ env.durioo_samsung_distributor_password }}
+
+      - name: Upload WGT
+        uses: actions/upload-artifact@v4
+        with:
+          name: durioo-samsung-wgt
+          path: 'duriooplus-web-v2/tizen/**/*.wgt'
