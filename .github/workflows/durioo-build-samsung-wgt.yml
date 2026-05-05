@@ -35,6 +35,9 @@ jobs:
       - name: Install Deps
         run: cd duriooplus-web-v2/ && yarn
 
+      - name: Ensure env-cmd
+        run: cd duriooplus-web-v2/ && yarn add --dev env-cmd
+
       - name: Build Tizen Web Bundle
         run: cd duriooplus-web-v2/ && yarn build:tizen:production
 
