@@ -45,4 +45,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: durioo-samsung-launcher-wgt
-          path: 'duriooplus-web-v2/tizen/**/*.wgt'
+          path: 'duriooplus-samsung-launcher/**/*.wgt'
