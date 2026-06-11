@@ -32,19 +32,10 @@ jobs:
       - name: Clone Repo
         run: git clone -b ${{ github.event.inputs.branch }} git@github.com:duriooplus/duriooplus-samsung-launcher.git
 
-      - name: Install Deps
-        run: cd duriooplus-web-v2/ && yarn
-
-      - name: Ensure env-cmd
-        run: cd duriooplus-web-v2/ && yarn add --dev env-cmd
-
-      - name: Build Tizen Web Bundle
-        run: cd duriooplus-web-v2/ && yarn build:tizen:production
-
       - name: Build & Sign WGT
         uses: sourcetoad/tizen-build-action@v1
         with:
-          project-dir: duriooplus-web-v2/tizen
+          project-dir: duriooplus-samsung-launcher
           author-key: ${{ env.durioo_samsung_author_key }}
           author-password: ${{ env.durioo_samsung_author_password }}
           distributor-key: ${{ env.durioo_samsung_distributor_key }}
@@ -53,5 +44,5 @@ jobs:
       - name: Upload WGT
         uses: actions/upload-artifact@v4
         with:
-          name: durioo-samsung-wgt
+          name: durioo-samsung-launcher-wgt
           path: 'duriooplus-web-v2/tizen/**/*.wgt'
