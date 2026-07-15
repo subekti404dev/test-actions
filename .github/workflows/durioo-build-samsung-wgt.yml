@@ -58,7 +58,8 @@ jobs:
         env:
           SAMSUNG_SESSION: ${{ env.durioo_samsung_seller_session }}
         run: |
-          WGT="$(find duriooplus-web-v2/tizen -name '*.wgt' | head -1)"
+          WGT="$(find duriooplus-web-v2 -name '*.wgt' | head -1)"
+          echo "Found WGT: $WGT"
           bash scripts/samsung-usb-sign.sh "$WGT" samsung-usb
 
       - name: Upload USB Package
