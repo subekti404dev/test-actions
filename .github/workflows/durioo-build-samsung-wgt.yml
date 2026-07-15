@@ -1,4 +1,5 @@
 name: Build Samsung WGT Durioo
+
 on:
   workflow_dispatch:
     inputs:
@@ -23,13 +24,13 @@ jobs:
           echo "key<<EOF" >> $GITHUB_OUTPUT
           echo "${{ env.durioo_builder_b64_ssh_key }}" | base64 -d >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          
+
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ steps.decode_key.outputs.key }}
 
-      - name: Clone Repon
+      - name: Clone Repo
         run: git clone -b ${{ github.event.inputs.branch }} git@github.com:duriooplus/duriooplus-web-v2.git
 
       - name: Install Deps
@@ -50,8 +51,42 @@ jobs:
           distributor-key: ${{ env.durioo_samsung_distributor_key }}
           distributor-password: ${{ env.durioo_samsung_distributor_password }}
 
-      - name: Upload WGT
+      - name: Samsung USB Sign
+        env:
+          SAMSUNG_SESSION: ${{ env.durioo_samsung_seller_session }}
+        run: |
+          WGT="$(find duriooplus-web-v2/tizen -name '*.wgt' | head -1)"
+          FILENAME="$(basename "$WGT")"
+          FILESIZE="$(stat -c%s "$WGT")"
+          COOKIE="COOKIE_CONSENT=TRUE; GA_CONSENT=TRUE; SESSION=${SAMSUNG_SESSION}"
+          BASE="https://seller.samsungapps.com/tv/v2/sba"
+
+          UPLOAD=$(curl -sf "${BASE}/files/upload/app-sign" \
+            -H "Cookie: ${COOKIE}" \
+            -F "fileId=" \
+            -F 'fileUploadProperties={"downloadType":"FW.FILE.APP_SIGN","ownerObjectId":null,"ownerObjectId2":null,"ownerTableName":null,"isPublic":false,"isNewIdForEachFile":false}' \
+            -F "file_${FILESIZE}_${FILENAME}=@${WGT};type=application/octet-stream")
+
+          FILE_KEY=$(echo "$UPLOAD" | jq -r '.[0].fileKey')
+          echo "fileKey: $FILE_KEY"
+
+          SIGN=$(curl -s "${BASE}/appsign/usb" \
+            -H "Content-Type: application/json" \
+            -H "Cookie: ${COOKIE}" \
+            --data-raw "{\"fileKey\":\"${FILE_KEY}\"}")
+
+          TMG_URL=$(echo "$SIGN" | jq -r '.tmgFileUrl')
+          LIC_URL=$(echo "$SIGN" | jq -r '.licenseFileUrl')
+          ERR=$(echo "$SIGN" | jq -r '.errorMessage')
+          [ "$ERR" != "null" ] && [ -n "$ERR" ] && { echo "Sign error: $ERR"; exit 1; }
+
+          mkdir -p samsung-usb
+          curl -L "$TMG_URL" -o "samsung-usb/Durioo.tmg"
+          curl -L "$LIC_URL" -o "samsung-usb/widget.license"
+          cp "$WGT" "samsung-usb/Durioo.wgt"
+
+      - name: Upload USB Package
         uses: actions/upload-artifact@v4
         with:
-          name: durioo-samsung-wgt
-          path: 'duriooplus-web-v2/tizen/**/*.wgt'
+          name: durioo-samsung-usb
+          path: samsung-usb/
