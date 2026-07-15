@@ -12,6 +12,9 @@ jobs:
   build_wgt:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Load Remote ENV from Protected JSON
         uses: subekti404dev/gha-json-env@v1
         with:
@@ -56,46 +59,7 @@ jobs:
           SAMSUNG_SESSION: ${{ env.durioo_samsung_seller_session }}
         run: |
           WGT="$(find duriooplus-web-v2/tizen -name '*.wgt' | head -1)"
-          FILENAME="$(basename "$WGT")"
-          FILESIZE="$(stat -c%s "$WGT")"
-          COOKIE="COOKIE_CONSENT=TRUE; GA_CONSENT=TRUE; SESSION=${SAMSUNG_SESSION}"
-          BASE="https://seller.samsungapps.com/tv/v2/sba"
-
-          UPLOAD=$(curl -s -w "\n%{http_code}" "${BASE}/files/upload/app-sign" \
-            -H "Cookie: ${COOKIE}" \
-            -F "fileId=" \
-            -F 'fileUploadProperties={"downloadType":"FW.FILE.APP_SIGN","ownerObjectId":null,"ownerObjectId2":null,"ownerTableName":null,"isPublic":false,"isNewIdForEachFile":false}' \
-            -F "file_${FILESIZE}_${FILENAME}=@${WGT};type=application/octet-stream")
-
-          UPLOAD_HTTP=$(echo "$UPLOAD" | tail -1)
-          UPLOAD_BODY=$(echo "$UPLOAD" | sed '$d')
-          echo "upload HTTP $UPLOAD_HTTP: $UPLOAD_BODY"
-          [[ "$UPLOAD_HTTP" == "200" ]] || { echo "Upload failed (HTTP $UPLOAD_HTTP)"; exit 1; }
-
-          FILE_KEY=$(echo "$UPLOAD_BODY" | jq -r '.[0].fileKey')
-          [[ -n "$FILE_KEY" && "$FILE_KEY" != "null" ]] || { echo "No fileKey"; exit 1; }
-          echo "fileKey: $FILE_KEY"
-
-          SIGN=$(curl -s -w "\n%{http_code}" "${BASE}/appsign/usb" \
-            -H "Content-Type: application/json" \
-            -H "Cookie: ${COOKIE}" \
-            --data-raw "{\"fileKey\":\"${FILE_KEY}\"}")
-
-          SIGN_HTTP=$(echo "$SIGN" | tail -1)
-          SIGN_BODY=$(echo "$SIGN" | sed '$d')
-          echo "sign HTTP $SIGN_HTTP: $SIGN_BODY"
-          [[ "$SIGN_HTTP" == "200" ]] || { echo "Sign failed (HTTP $SIGN_HTTP)"; exit 1; }
-
-          TMG_URL=$(echo "$SIGN_BODY" | jq -r '.tmgFileUrl // empty')
-          LIC_URL=$(echo "$SIGN_BODY" | jq -r '.licenseFileUrl // empty')
-          ERR=$(echo "$SIGN_BODY" | jq -r '.errorMessage // empty')
-          [[ -n "$ERR" && "$ERR" != "null" ]] && { echo "Sign error: $ERR"; exit 1; }
-          [[ -n "$TMG_URL" ]] || { echo "No tmgFileUrl"; exit 1; }
-
-          mkdir -p samsung-usb
-          curl -L "$TMG_URL" -o "samsung-usb/Durioo.tmg"
-          curl -L "$LIC_URL" -o "samsung-usb/widget.license"
-          cp "$WGT" "samsung-usb/Durioo.wgt"
+          bash scripts/samsung-usb-sign.sh "$WGT" samsung-usb
 
       - name: Upload USB Package
         uses: actions/upload-artifact@v4
